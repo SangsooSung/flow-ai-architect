@@ -1,16 +1,23 @@
 import { useState } from "react";
 import type { Phase3Data } from "@/types/project";
+import { ProjectOverviewSection } from "./phase3/ProjectOverviewSection";
+import { ArchitectureView } from "./phase3/ArchitectureView";
+import { UserFlowsView } from "./phase3/UserFlowsView";
+import { MigrationPlanView } from "./phase3/MigrationPlanView";
+import { ConflictResolutionView } from "./phase3/ConflictResolutionView";
 import {
   FileText,
   Copy,
   Download,
   CheckCircle2,
   Shield,
-  Database,
-  Layers,
   AlertTriangle,
-  ChevronDown,
-  ChevronRight,
+  Target,
+  Database,
+  GitBranch,
+  Truck,
+  ShieldAlert,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,8 +25,10 @@ interface Phase3PanelProps {
   data: Phase3Data;
 }
 
+type TabKey = "overview" | "architecture" | "flows" | "migration" | "conflicts" | "document" | "modules";
+
 export function Phase3Panel({ data }: Phase3PanelProps) {
-  const [activeTab, setActiveTab] = useState<"document" | "modules" | "data-model">("document");
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -40,17 +49,29 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
     toast.success("PRD downloaded as Markdown");
   };
 
+  const tabs: { key: TabKey; label: string; icon: typeof Target; badge?: string }[] = [
+    { key: "overview", label: "Overview", icon: Target },
+    { key: "architecture", label: "Architecture", icon: Database },
+    { key: "flows", label: "User Flows", icon: GitBranch },
+    { key: "migration", label: "Migration", icon: Truck },
+    { key: "conflicts", label: "Conflicts", icon: ShieldAlert, badge: `${data.conflicts.filter(c => c.severity === 'critical').length}` },
+    { key: "document", label: "Full PRD", icon: FileText },
+    { key: "modules", label: "Modules", icon: Layers },
+  ];
+
+  const criticalCount = data.conflicts.filter((c) => c.severity === "critical").length;
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-foreground mb-1">ERP Specification</h3>
+          <h3 className="text-lg font-bold text-foreground mb-1">ERP Technical Specification</h3>
           <p className="text-sm text-muted-foreground">
-            Developer-ready specification generated from transcript and artifact analysis.
+            Developer-ready PRD synthesized from transcript and artifact analysis.
           </p>
         </div>
-        <ConfidenceBadge confidence={data.confidence} />
+        <ConfidenceBadge confidence={data.confidence} criticalConflicts={criticalCount} />
       </div>
 
       {/* Export Actions */}
@@ -72,63 +93,97 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1">
-        {[
-          { key: "document" as const, label: "Document", icon: FileText },
-          { key: "modules" as const, label: "Modules", icon: Layers },
-          { key: "data-model" as const, label: "Data Model", icon: Database },
-        ].map((tab) => (
+      <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1 overflow-x-auto">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               activeTab === tab.key
                 ? "bg-white text-indigo-700 shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <tab.icon className="w-4 h-4" />
+            <tab.icon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{tab.label}</span>
+            {tab.badge && tab.key === "conflicts" && parseInt(tab.badge) > 0 && (
+              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      {activeTab === "document" && <DocumentView markdown={data.prdMarkdown} />}
-      {activeTab === "modules" && <ModulesView data={data} />}
-      {activeTab === "data-model" && <DataModelView data={data} />}
+      <div className="min-h-[400px]">
+        {activeTab === "overview" && (
+          <ProjectOverviewSection overview={data.projectOverview} />
+        )}
+
+        {activeTab === "architecture" && (
+          <ArchitectureView architecture={data.architecture} />
+        )}
+
+        {activeTab === "flows" && (
+          <UserFlowsView flows={data.userFlows} />
+        )}
+
+        {activeTab === "migration" && (
+          <MigrationPlanView plan={data.migrationPlan} />
+        )}
+
+        {activeTab === "conflicts" && (
+          <ConflictResolutionView
+            conflicts={data.conflicts}
+            blockingQuestions={data.blockingQuestions}
+          />
+        )}
+
+        {activeTab === "document" && (
+          <DocumentView markdown={data.prdMarkdown} />
+        )}
+
+        {activeTab === "modules" && (
+          <ModulesView data={data} />
+        )}
+      </div>
     </div>
   );
 }
 
-function ConfidenceBadge({ confidence }: { confidence: number }) {
-  const color =
-    confidence >= 80
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-      : confidence >= 60
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-rose-50 text-rose-700 border-rose-200";
+function ConfidenceBadge({ confidence, criticalConflicts }: { confidence: number; criticalConflicts: number }) {
+  const hasIssues = criticalConflicts > 0;
+  const color = hasIssues
+    ? "bg-rose-50 text-rose-700 border-rose-200"
+    : confidence >= 80
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : confidence >= 60
+    ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-rose-50 text-rose-700 border-rose-200";
 
-  const icon =
-    confidence >= 80 ? (
-      <Shield className="w-4 h-4" />
-    ) : (
-      <AlertTriangle className="w-4 h-4" />
-    );
+  const icon = hasIssues ? (
+    <AlertTriangle className="w-4 h-4" />
+  ) : confidence >= 80 ? (
+    <Shield className="w-4 h-4" />
+  ) : (
+    <AlertTriangle className="w-4 h-4" />
+  );
 
   return (
     <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${color}`}>
       {icon}
       <div>
         <p className="text-xs font-bold leading-none">{confidence}% Confidence</p>
-        <p className="text-[10px] opacity-70 mt-0.5">Transcript + Artifact alignment</p>
+        <p className="text-[10px] opacity-70 mt-0.5">
+          {hasIssues ? `${criticalConflicts} critical conflicts` : "Transcript + Artifact alignment"}
+        </p>
       </div>
     </div>
   );
 }
 
 function DocumentView({ markdown }: { markdown: string }) {
-  // Simple markdown renderer
   const lines = markdown.split("\n");
 
   return (
@@ -156,7 +211,7 @@ function DocumentView({ markdown }: { markdown: string }) {
             );
           }
           if (line.startsWith("```")) {
-            return null; // Skip code fences, handled below
+            return null;
           }
           if (line.startsWith("|")) {
             return <p key={i} className="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">{line}</p>;
@@ -175,7 +230,6 @@ function DocumentView({ markdown }: { markdown: string }) {
 }
 
 function renderInlineMarkdown(text: string): React.ReactNode {
-  // Handle inline code
   const parts = text.split(/(`[^`]+`)/g);
   return parts.map((part, i) => {
     if (part.startsWith("`") && part.endsWith("`")) {
@@ -185,7 +239,6 @@ function renderInlineMarkdown(text: string): React.ReactNode {
         </code>
       );
     }
-    // Handle bold
     const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
     return boldParts.map((bp, j) => {
       if (bp.startsWith("**") && bp.endsWith("**")) {
@@ -197,8 +250,6 @@ function renderInlineMarkdown(text: string): React.ReactNode {
 }
 
 function ModulesView({ data }: { data: Phase3Data }) {
-  const [expandedModule, setExpandedModule] = useState<string | null>(data.modules[0]?.name ?? null);
-
   const priorityColors = {
     Critical: "bg-rose-50 text-rose-700 border-rose-200",
     High: "bg-amber-50 text-amber-700 border-amber-200",
@@ -207,111 +258,42 @@ function ModulesView({ data }: { data: Phase3Data }) {
   };
 
   return (
-    <div className="space-y-3">
-      {data.modules.map((mod) => {
-        const isExpanded = expandedModule === mod.name;
-        return (
-          <div key={mod.name} className="border border-border/60 rounded-2xl bg-white overflow-hidden">
-            <button
-              onClick={() => setExpandedModule(isExpanded ? null : mod.name)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/20 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <Layers className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">{mod.name}</p>
-                <p className="text-xs text-muted-foreground">{mod.description}</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <Layers className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-foreground">ERP Modules</h3>
+          <p className="text-xs text-muted-foreground">Functional modules with requirements mapping</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {data.modules.map((mod) => (
+          <div key={mod.name} className="border border-border/60 rounded-2xl bg-white overflow-hidden hover:shadow-md transition-shadow">
+            <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-600" />
+                <span className="font-semibold text-sm text-foreground">{mod.name}</span>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${priorityColors[mod.priority]}`}>
                 {mod.priority}
               </span>
-              {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-            </button>
-            {isExpanded && (
-              <div className="px-4 pb-4 pt-1 border-t border-border/30 animate-fade-in">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Requirements ({mod.requirements.length})
-                </p>
-                <div className="space-y-1.5">
-                  {mod.requirements.map((req) => (
-                    <div key={req} className="flex items-center gap-2 text-sm text-foreground/80 p-1.5 rounded-lg hover:bg-muted/20">
-                      <div className="w-4 h-4 rounded border-2 border-indigo-300 flex-shrink-0" />
-                      <span className="font-mono text-xs text-indigo-600">{req}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function DataModelView({ data }: { data: Phase3Data }) {
-  return (
-    <div className="space-y-3">
-      {data.dataModel.map((entity) => (
-        <div key={entity.name} className="border border-border/60 rounded-2xl bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/30 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center">
-              <Database className="w-4 h-4" />
             </div>
-            <h4 className="font-bold text-sm font-mono text-foreground">{entity.name}</h4>
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-              {entity.fields.length} fields
-            </span>
-          </div>
-          <div className="p-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left">
-                    <th className="pb-2 font-semibold text-muted-foreground pr-4">Field</th>
-                    <th className="pb-2 font-semibold text-muted-foreground pr-4">Type</th>
-                    <th className="pb-2 font-semibold text-muted-foreground">Required</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entity.fields.map((field) => (
-                    <tr key={field.name} className="border-t border-border/20">
-                      <td className="py-1.5 pr-4 font-mono font-medium text-foreground">{field.name}</td>
-                      <td className="py-1.5 pr-4">
-                        <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-mono">
-                          {field.type}
-                        </span>
-                      </td>
-                      <td className="py-1.5">
-                        {field.required ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {entity.relationships.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/30">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Relationships
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {entity.relationships.map((rel) => (
-                    <span key={rel} className="text-[11px] px-2 py-0.5 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-700">
-                      {rel}
-                    </span>
-                  ))}
-                </div>
+            <div className="p-4">
+              <p className="text-xs text-muted-foreground mb-3">{mod.description}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {mod.requirements.map((req) => (
+                  <span key={req} className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 font-mono">
+                    {req}
+                  </span>
+                ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,17 +1,23 @@
 import { useState, useRef } from "react";
-import type { ArtifactReference, Phase2Data, AnalyzedArtifact, ValidationResult } from "@/types/project";
+import type { ArtifactReference, Phase2Data, AnalyzedArtifact } from "@/types/project";
 import { mockPhase2Data } from "@/data/mockData";
+import { SchemaDict } from "./phase2/SchemaDict";
+import { LogicEngine } from "./phase2/LogicEngine";
+import { RealityCheck } from "./phase2/RealityCheck";
+import { EntityInference } from "./phase2/EntityInference";
 import {
   FileSpreadsheet,
   Upload,
   CheckCircle2,
-  AlertTriangle,
-  Info,
   Sparkles,
   Table2,
-  GitBranch,
-  ShieldCheck,
   Loader2,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Zap,
+  ShieldCheck,
+  GitBranch,
 } from "lucide-react";
 
 interface Phase2PanelProps {
@@ -20,10 +26,13 @@ interface Phase2PanelProps {
   processing: boolean;
 }
 
+type TabKey = "preview" | "schema" | "logic" | "validation" | "entities";
+
 export function Phase2Panel({ artifacts, onComplete, processing }: Phase2PanelProps) {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, string>>({});
   const [analyzed, setAnalyzed] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("preview");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleFileUpload = (artifactId: string, file: File) => {
@@ -37,6 +46,7 @@ export function Phase2Panel({ artifacts, onComplete, processing }: Phase2PanelPr
     setTimeout(() => {
       setAnalyzing(false);
       setAnalyzed(true);
+      setActiveTab("schema");
     }, 2500);
   };
 
@@ -44,12 +54,20 @@ export function Phase2Panel({ artifacts, onComplete, processing }: Phase2PanelPr
     onComplete(mockPhase2Data);
   };
 
+  const tabs: { key: TabKey; label: string; icon: typeof Database }[] = [
+    { key: "preview", label: "Data Preview", icon: Table2 },
+    { key: "schema", label: "Schema", icon: Database },
+    { key: "logic", label: "Logic Engine", icon: Zap },
+    { key: "validation", label: "Reality Check", icon: ShieldCheck },
+    { key: "entities", label: "Entities", icon: GitBranch },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h3 className="text-lg font-bold text-foreground mb-1">Artifact Analysis</h3>
         <p className="text-sm text-muted-foreground">
-          The transcript analysis identified the following files. Upload them to validate and detail the requirements.
+          Upload the spreadsheets mentioned in the transcript to validate and detail the requirements.
         </p>
       </div>
 
@@ -147,31 +165,56 @@ export function Phase2Panel({ artifacts, onComplete, processing }: Phase2PanelPr
         <div className="space-y-5 animate-slide-up">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-soft" />
-            <span className="text-sm font-semibold text-emerald-700">Artifact Analysis Complete</span>
+            <span className="text-sm font-semibold text-emerald-700">Data Logic Technical Report</span>
           </div>
 
-          {/* Analyzed Artifacts */}
-          {mockPhase2Data.artifacts.map((artifact) => (
-            <ArtifactAnalysisCard key={artifact.id} artifact={artifact} />
-          ))}
+          {/* Tabs */}
+          <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  activeTab === tab.key
+                    ? "bg-white text-indigo-700 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
 
-          {/* Validation Results */}
-          <div className="border border-border/60 rounded-2xl bg-white overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/40">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4" />
+          {/* Tab Content */}
+          <div className="min-h-[300px]">
+            {activeTab === "preview" && (
+              <div className="space-y-4">
+                {mockPhase2Data.artifacts.map((artifact) => (
+                  <ArtifactPreviewCard key={artifact.id} artifact={artifact} />
+                ))}
               </div>
-              <h4 className="font-semibold text-sm text-foreground">Cross-Reference Validation</h4>
-            </div>
-            <div className="p-4 space-y-2">
-              {mockPhase2Data.validationResults.map((result, i) => (
-                <ValidationRow key={i} result={result} />
-              ))}
-            </div>
+            )}
+
+            {activeTab === "schema" && (
+              <SchemaDict schemas={mockPhase2Data.schemas} />
+            )}
+
+            {activeTab === "logic" && (
+              <LogicEngine analysis={mockPhase2Data.logicAnalysis} />
+            )}
+
+            {activeTab === "validation" && (
+              <RealityCheck validations={mockPhase2Data.contextValidation} />
+            )}
+
+            {activeTab === "entities" && (
+              <EntityInference recommendations={mockPhase2Data.normalization} />
+            )}
           </div>
 
           {/* Continue Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-4 border-t border-border/40">
             <button
               onClick={handleComplete}
               disabled={processing}
@@ -187,129 +230,83 @@ export function Phase2Panel({ artifacts, onComplete, processing }: Phase2PanelPr
   );
 }
 
-function ArtifactAnalysisCard({ artifact }: { artifact: AnalyzedArtifact }) {
-  const [showTable, setShowTable] = useState(false);
+function ArtifactPreviewCard({ artifact }: { artifact: AnalyzedArtifact }) {
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div className="border border-border/60 rounded-2xl bg-white overflow-hidden">
-      <div className="px-4 py-3.5 border-b border-border/40 flex items-center justify-between">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-4 py-3.5 border-b border-border/40 flex items-center justify-between hover:bg-muted/20 transition-colors"
+      >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center">
             <Table2 className="w-4 h-4" />
           </div>
-          <div>
+          <div className="text-left">
             <h4 className="font-semibold text-sm text-foreground">{artifact.name}</h4>
-            <p className="text-xs text-muted-foreground">{artifact.fileName}</p>
+            <p className="text-xs text-muted-foreground">{artifact.fileName} • {artifact.headers.length} columns • {artifact.sampleRows.length} sample rows</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowTable(!showTable)}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          {showTable ? "Hide Preview" : "Show Preview"}
-        </button>
-      </div>
+        {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
 
-      {showTable && (
-        <div className="overflow-x-auto border-b border-border/40">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-muted/30">
-                {artifact.headers.map((h) => (
-                  <th key={h} className="px-3 py-2 text-left font-semibold text-muted-foreground whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {artifact.sampleRows.map((row, i) => (
-                <tr key={i} className="border-t border-border/30">
+      {expanded && (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-muted/30">
                   {artifact.headers.map((h) => (
-                    <td key={h} className="px-3 py-2 text-foreground whitespace-nowrap font-mono">
-                      {row[h] || "—"}
-                    </td>
+                    <th key={h} className="px-3 py-2 text-left font-semibold text-muted-foreground whitespace-nowrap">
+                      {h}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="p-4 space-y-3">
-        {/* Formulas */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Formulas Detected
-          </p>
-          <div className="space-y-1">
-            {artifact.formulasFound.map((f, i) => (
-              <code key={i} className="block text-[11px] bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-mono leading-relaxed">
-                {f}
-              </code>
-            ))}
+              </thead>
+              <tbody>
+                {artifact.sampleRows.map((row, i) => (
+                  <tr key={i} className="border-t border-border/30">
+                    {artifact.headers.map((h) => (
+                      <td key={h} className="px-3 py-2 text-foreground whitespace-nowrap font-mono">
+                        {row[h] || "—"}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
 
-        {/* Relationships */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
-            <GitBranch className="w-3 h-3" />
-            Entity Relationships
-          </p>
-          <div className="space-y-1">
-            {artifact.entityRelationships.map((r, i) => (
-              <p key={i} className="text-sm text-foreground/80 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
-                {r}
+          <div className="p-4 border-t border-border/40 space-y-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Formulas Detected ({artifact.formulasFound.length})
               </p>
-            ))}
+              <div className="space-y-1">
+                {artifact.formulasFound.map((f, i) => (
+                  <code key={i} className="block text-[11px] bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-mono leading-relaxed">
+                    {f}
+                  </code>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Column Types
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(artifact.dataTypes).map(([col, type]) => (
+                  <span key={col} className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 border border-border text-muted-foreground">
+                    <span className="font-semibold text-foreground">{col}</span>: {type}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Data Types */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Column Types
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(artifact.dataTypes).map(([col, type]) => (
-              <span key={col} className="text-[11px] px-2 py-0.5 rounded-md bg-gray-50 border border-border text-muted-foreground">
-                <span className="font-semibold text-foreground">{col}</span>: {type}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValidationRow({ result }: { result: ValidationResult }) {
-  const icon =
-    result.status === "match" ? (
-      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-    ) : result.status === "mismatch" ? (
-      <AlertTriangle className="w-4 h-4 text-amber-500" />
-    ) : (
-      <Info className="w-4 h-4 text-cyan-500" />
-    );
-
-  const bg =
-    result.status === "match"
-      ? "bg-emerald-50/50"
-      : result.status === "mismatch"
-      ? "bg-amber-50/50"
-      : "bg-cyan-50/50";
-
-  return (
-    <div className={`flex items-start gap-2.5 p-2.5 rounded-xl ${bg}`}>
-      <div className="mt-0.5 flex-shrink-0">{icon}</div>
-      <div>
-        <p className="text-sm font-medium text-foreground">{result.field}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{result.message}</p>
-      </div>
+        </>
+      )}
     </div>
   );
 }
