@@ -647,13 +647,14 @@ if Order.total > 10000:
   ],
 };
 
+// Updated dates to Dec 2025 - Jan 2026
 export const mockProjects: Project[] = [
   {
     id: "proj-1",
     name: "Acme Corp Inventory ERP",
     clientName: "Acme Corporation",
-    createdAt: "2024-01-15T10:30:00Z",
-    updatedAt: "2024-01-15T14:22:00Z",
+    createdAt: "2025-12-15T10:30:00Z",
+    updatedAt: "2025-12-15T14:22:00Z",
     currentPhase: 3,
     status: "completed",
     phase1: mockPhase1Data,
@@ -664,8 +665,8 @@ export const mockProjects: Project[] = [
     id: "proj-2",
     name: "TechFlow CRM Migration",
     clientName: "TechFlow Industries",
-    createdAt: "2024-01-14T09:00:00Z",
-    updatedAt: "2024-01-14T16:45:00Z",
+    createdAt: "2026-01-08T09:00:00Z",
+    updatedAt: "2026-01-08T16:45:00Z",
     currentPhase: 2,
     status: "in_progress",
     phase1: {
@@ -682,8 +683,8 @@ export const mockProjects: Project[] = [
     id: "proj-3",
     name: "GreenLeaf Supply Chain",
     clientName: "GreenLeaf Organics",
-    createdAt: "2024-01-13T11:15:00Z",
-    updatedAt: "2024-01-13T11:15:00Z",
+    createdAt: "2025-12-22T11:15:00Z",
+    updatedAt: "2025-12-22T11:15:00Z",
     currentPhase: 1,
     status: "draft",
     phase1: null,

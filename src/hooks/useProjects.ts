@@ -1,81 +1,131 @@
-import { useState, useCallback } from "react";
-import type { Project, Phase1Data, Phase2Data, Phase3Data } from "@/types/project";
-import { mockProjects } from "@/data/mockData";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import type { Project, Phase1Data, Phase2Data, Phase3Data } from '@/types/project';
+import type { ProjectRow } from '@/types/database';
 
-const STORAGE_KEY = "flow-ai-projects";
-
-function loadProjects(): Project[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch {
-    // ignore
-  }
-  return mockProjects;
-}
-
-function saveProjects(projects: Project[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+// Convert database row to Project type
+function rowToProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    clientName: row.client_name,
+    currentPhase: row.current_phase as 1 | 2 | 3,
+    status: row.status as 'draft' | 'in_progress' | 'completed',
+    phase1: row.phase1_data,
+    phase2: row.phase2_data,
+    phase3: row.phase3_data,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
+  const queryClient = useQueryClient();
 
-  const updateProjects = useCallback((updater: (prev: Project[]) => Project[]) => {
-    setProjects((prev) => {
-      const next = updater(prev);
-      saveProjects(next);
-      return next;
-    });
-  }, []);
+  // Fetch all projects
+  const { data: projects = [], isLoading, error } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data.map(rowToProject);
+    },
+  });
 
-  const createProject = useCallback((name: string, clientName: string): Project => {
-    const project: Project = {
-      id: `proj-${Date.now()}`,
-      name,
-      clientName,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      currentPhase: 1,
-      status: "draft",
-      phase1: null,
-      phase2: null,
-      phase3: null,
-    };
-    updateProjects((prev) => [project, ...prev]);
-    return project;
-  }, [updateProjects]);
+  // Create project mutation
+  const createMutation = useMutation({
+    mutationFn: async ({ name, clientName }: { name: string; clientName: string }) => {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({ name, client_name: clientName })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return rowToProject(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
 
-  const updateProject = useCallback((id: string, updates: Partial<Project>) => {
-    updateProjects((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-      )
-    );
-  }, [updateProjects]);
+  // Update project mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Project> }) => {
+      const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.clientName !== undefined) dbUpdates.client_name = updates.clientName;
+      if (updates.currentPhase !== undefined) dbUpdates.current_phase = updates.currentPhase;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.phase1 !== undefined) dbUpdates.phase1_data = updates.phase1;
+      if (updates.phase2 !== undefined) dbUpdates.phase2_data = updates.phase2;
+      if (updates.phase3 !== undefined) dbUpdates.phase3_data = updates.phase3;
 
-  const updatePhase1 = useCallback((id: string, data: Phase1Data) => {
-    updateProject(id, { phase1: data, currentPhase: 2, status: "in_progress" });
-  }, [updateProject]);
+      const { error } = await supabase
+        .from('projects')
+        .update(dbUpdates)
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
 
-  const updatePhase2 = useCallback((id: string, data: Phase2Data) => {
-    updateProject(id, { phase2: data, currentPhase: 3 });
-  }, [updateProject]);
+  // Delete project mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
 
-  const updatePhase3 = useCallback((id: string, data: Phase3Data) => {
-    updateProject(id, { phase3: data, status: "completed" });
-  }, [updateProject]);
+  // Helper functions that return promises
+  const createProject = async (name: string, clientName: string): Promise<Project> => {
+    return createMutation.mutateAsync({ name, clientName });
+  };
 
-  const getProject = useCallback((id: string) => {
+  const updateProject = async (id: string, updates: Partial<Project>): Promise<void> => {
+    return updateMutation.mutateAsync({ id, updates });
+  };
+
+  const updatePhase1 = async (id: string, data: Phase1Data): Promise<void> => {
+    return updateProject(id, { phase1: data, currentPhase: 2, status: 'in_progress' });
+  };
+
+  const updatePhase2 = async (id: string, data: Phase2Data): Promise<void> => {
+    return updateProject(id, { phase2: data, currentPhase: 3 });
+  };
+
+  const updatePhase3 = async (id: string, data: Phase3Data): Promise<void> => {
+    return updateProject(id, { phase3: data, status: 'completed' });
+  };
+
+  const getProject = (id: string): Project | null => {
     return projects.find((p) => p.id === id) ?? null;
-  }, [projects]);
+  };
 
-  const deleteProject = useCallback((id: string) => {
-    updateProjects((prev) => prev.filter((p) => p.id !== id));
-  }, [updateProjects]);
+  const deleteProject = async (id: string): Promise<void> => {
+    return deleteMutation.mutateAsync(id);
+  };
 
   return {
     projects,
+    isLoading,
+    error,
     createProject,
     updateProject,
     updatePhase1,

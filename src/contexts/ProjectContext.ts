@@ -3,13 +3,15 @@ import type { Project, Phase1Data, Phase2Data, Phase3Data } from "@/types/projec
 
 interface ProjectContextType {
   projects: Project[];
-  createProject: (name: string, clientName: string) => Project;
-  updateProject: (id: string, updates: Partial<Project>) => void;
-  updatePhase1: (id: string, data: Phase1Data) => void;
-  updatePhase2: (id: string, data: Phase2Data) => void;
-  updatePhase3: (id: string, data: Phase3Data) => void;
+  isLoading: boolean;
+  error: Error | null;
+  createProject: (name: string, clientName: string) => Promise<Project>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  updatePhase1: (id: string, data: Phase1Data) => Promise<void>;
+  updatePhase2: (id: string, data: Phase2Data) => Promise<void>;
+  updatePhase3: (id: string, data: Phase3Data) => Promise<void>;
   getProject: (id: string) => Project | null;
-  deleteProject: (id: string) => void;
+  deleteProject: (id: string) => Promise<void>;
 }
 
 export const ProjectContext = createContext<ProjectContextType | null>(null);

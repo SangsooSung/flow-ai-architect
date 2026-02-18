@@ -19,6 +19,7 @@ import {
   Zap,
   ShieldCheck,
   GitBranch,
+  Loader2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,11 +27,23 @@ import { toast } from "sonner";
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getProject, deleteProject } = useProjectContext();
+  const { getProject, deleteProject, isLoading } = useProjectContext();
   const [activeTab, setActiveTab] = useState<"overview" | "phase1" | "phase2" | "phase3">("overview");
   const [phase2SubTab, setPhase2SubTab] = useState<"schema" | "logic" | "validation" | "entities">("schema");
+  const [deleting, setDeleting] = useState(false);
 
   const project = id ? getProject(id) : null;
+
+  if (isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+          <p className="text-sm text-muted-foreground">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
@@ -48,10 +61,17 @@ export default function ProjectDetail() {
     );
   }
 
-  const handleDelete = () => {
-    deleteProject(project.id);
-    toast.success("Project deleted");
-    navigate("/");
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteProject(project.id);
+      toast.success("Project deleted");
+      navigate("/");
+    } catch (error) {
+      toast.error("Failed to delete project");
+      console.error(error);
+      setDeleting(false);
+    }
   };
 
   const completedPhases = [];
@@ -101,10 +121,15 @@ export default function ProjectDetail() {
           </div>
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/50 transition-all self-start"
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/50 transition-all self-start disabled:opacity-50"
           >
-            <Trash2 className="w-4 h-4" />
-            Delete
+            {deleting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            {deleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>

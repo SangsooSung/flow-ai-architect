@@ -9,14 +9,45 @@ import {
   CheckCircle2,
   FolderPlus,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { projects } = useProjectContext();
+  const { projects, isLoading, error } = useProjectContext();
 
   const completedCount = projects.filter((p) => p.status === "completed").length;
   const inProgressCount = projects.filter((p) => p.status === "in_progress").length;
-  const avgTimeSaved = completedCount > 0 ? `${completedCount * 2.4}h` : "—";
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-4" />
+          <p className="text-sm text-muted-foreground">Loading projects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 rounded-2xl bg-rose-100 flex items-center justify-center mb-4">
+            <Sparkles className="w-8 h-8 text-rose-500" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-2">Failed to load projects</h3>
+          <p className="text-sm text-muted-foreground mb-4">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">

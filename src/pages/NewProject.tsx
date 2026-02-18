@@ -8,7 +8,8 @@ import { Phase2Panel } from "@/components/Phase2Panel";
 import { Phase3Panel } from "@/components/Phase3Panel";
 import { mockPhase1Data, mockPhase3Data } from "@/data/mockData";
 import type { Phase1Data, Phase2Data } from "@/types/project";
-import { ArrowLeft, ArrowRight, FolderPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, FolderPlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function NewProject() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function NewProject() {
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const [currentPhase, setCurrentPhase] = useState<1 | 2 | 3>(1);
   const [completedPhases, setCompletedPhases] = useState<number[]>([]);
@@ -26,42 +28,74 @@ export default function NewProject() {
   const [phase1Data, setPhase1Data] = useState<Phase1Data | null>(null);
   const [phase3Data, setPhase3Data] = useState<typeof mockPhase3Data | null>(null);
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!projectName.trim() || !clientName.trim()) return;
-    const project = createProject(projectName.trim(), clientName.trim());
-    setProjectId(project.id);
-    setStep("phases");
+    
+    setCreating(true);
+    try {
+      const project = await createProject(projectName.trim(), clientName.trim());
+      setProjectId(project.id);
+      setStep("phases");
+      toast.success("Project created successfully");
+    } catch (error) {
+      toast.error("Failed to create project");
+      console.error(error);
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleAnalyzeTranscript = (_transcript: string) => {
+  const handleAnalyzeTranscript = async (_transcript: string) => {
     setProcessing(true);
     // Simulate AI processing
-    setTimeout(() => {
+    setTimeout(async () => {
       const data: Phase1Data = {
         ...mockPhase1Data,
         transcript: _transcript,
       };
       setPhase1Data(data);
-      if (projectId) updatePhase1(projectId, data);
+      
+      if (projectId) {
+        try {
+          await updatePhase1(projectId, data);
+        } catch (error) {
+          console.error("Failed to save Phase 1:", error);
+        }
+      }
+      
       setCompletedPhases((prev) => [...prev, 1]);
       setCurrentPhase(2);
       setProcessing(false);
     }, 3000);
   };
 
-  const handlePhase2Complete = (data: Phase2Data) => {
+  const handlePhase2Complete = async (data: Phase2Data) => {
     setProcessing(true);
-    setTimeout(() => {
-      if (projectId) updatePhase2(projectId, data);
+    setTimeout(async () => {
+      if (projectId) {
+        try {
+          await updatePhase2(projectId, data);
+        } catch (error) {
+          console.error("Failed to save Phase 2:", error);
+        }
+      }
       setCompletedPhases((prev) => [...prev, 2]);
       setCurrentPhase(3);
       setProcessing(false);
 
       // Auto-generate Phase 3
-      setTimeout(() => {
+      setTimeout(async () => {
         const p3Data = { ...mockPhase3Data, generatedAt: new Date().toISOString() };
         setPhase3Data(p3Data);
-        if (projectId) updatePhase3(projectId, p3Data);
+        
+        if (projectId) {
+          try {
+            await updatePhase3(projectId, p3Data);
+            toast.success("ERP Specification generated!");
+          } catch (error) {
+            console.error("Failed to save Phase 3:", error);
+          }
+        }
         setCompletedPhases((prev) => [...prev, 3]);
       }, 2000);
     }, 1500);
@@ -116,11 +150,20 @@ export default function NewProject() {
             </div>
             <button
               onClick={handleCreateProject}
-              disabled={!projectName.trim() || !clientName.trim()}
+              disabled={!projectName.trim() || !clientName.trim() || creating}
               className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none mt-6"
             >
-              Continue to Analysis
-              <ArrowRight className="w-4 h-4" />
+              {creating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  Continue to Analysis
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
