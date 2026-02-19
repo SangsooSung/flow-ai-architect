@@ -1,9 +1,9 @@
 import { Check, Lock, Loader2 } from "lucide-react";
 
 interface PhaseStepperProps {
-  currentPhase: 1 | 2 | 3;
+  currentPhase: 1 | 2 | 3 | 4;
   completedPhases: number[];
-  onPhaseClick?: (phase: 1 | 2 | 3) => void;
+  onPhaseClick?: (phase: 1 | 2 | 3 | 4) => void;
   processing?: boolean;
 }
 
@@ -11,6 +11,7 @@ const phases = [
   { phase: 1 as const, label: "Meeting Context", description: "Extract requirements from transcript" },
   { phase: 2 as const, label: "Artifact Analysis", description: "Parse spreadsheets & data files" },
   { phase: 3 as const, label: "ERP Synthesis", description: "Generate final PRD specification" },
+  { phase: 4 as const, label: "Build Prompts", description: "AI implementation guides" },
 ];
 
 export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, processing }: PhaseStepperProps) {
@@ -31,9 +32,9 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
                 disabled={isLocked}
                 className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ${
                   isActive
-                    ? "bg-indigo-50 border-2 border-indigo-200 shadow-sm"
+                    ? "bg-indigo-50 dark:bg-indigo-950/30 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm"
                     : isCompleted
-                    ? "bg-emerald-50 border-2 border-emerald-200 hover:bg-emerald-100 cursor-pointer"
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 cursor-pointer"
                     : "bg-muted/40 border-2 border-transparent opacity-50 cursor-not-allowed"
                 }`}
               >
@@ -43,7 +44,7 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30"
                       : isCompleted
                       ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                      : "bg-gray-200 text-gray-400"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {isProcessing ? (
@@ -58,12 +59,12 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
                 </div>
                 <div className="text-left">
                   <p className={`text-sm font-semibold leading-none ${
-                    isActive ? "text-indigo-700" : isCompleted ? "text-emerald-700" : "text-gray-400"
+                    isActive ? "text-indigo-700 dark:text-indigo-300" : isCompleted ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"
                   }`}>
                     {p.label}
                   </p>
                   <p className={`text-[11px] mt-0.5 leading-none ${
-                    isActive ? "text-indigo-500" : isCompleted ? "text-emerald-500" : "text-gray-300"
+                    isActive ? "text-indigo-500 dark:text-indigo-400" : isCompleted ? "text-emerald-500 dark:text-emerald-400" : "text-muted-foreground/60"
                   }`}>
                     {p.description}
                   </p>
@@ -72,7 +73,7 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
 
               {i < phases.length - 1 && (
                 <div className={`w-12 h-0.5 mx-1 rounded-full transition-colors ${
-                  completedPhases.includes(p.phase) ? "bg-emerald-300" : "bg-gray-200"
+                  completedPhases.includes(p.phase) ? "bg-emerald-300 dark:bg-emerald-700" : "bg-border"
                 }`} />
               )}
             </div>
@@ -96,7 +97,7 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30"
                       : isCompleted
                       ? "bg-emerald-500 text-white"
-                      : "bg-gray-200 text-gray-400"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {isProcessing ? (
@@ -108,14 +109,14 @@ export function PhaseStepper({ currentPhase, completedPhases, onPhaseClick, proc
                   )}
                 </div>
                 <p className={`text-[10px] font-semibold mt-1.5 text-center ${
-                  isActive ? "text-indigo-700" : isCompleted ? "text-emerald-600" : "text-gray-400"
+                  isActive ? "text-indigo-700 dark:text-indigo-300" : isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
                 }`}>
                   {p.label}
                 </p>
               </div>
               {i < phases.length - 1 && (
                 <div className={`w-full h-0.5 rounded-full -mt-4 ${
-                  isCompleted ? "bg-emerald-300" : "bg-gray-200"
+                  isCompleted ? "bg-emerald-300 dark:bg-emerald-700" : "bg-border"
                 }`} />
               )}
             </div>

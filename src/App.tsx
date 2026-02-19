@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ProjectContext } from "@/contexts/ProjectContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useProjects } from "@/hooks/useProjects";
 import Dashboard from "@/pages/Dashboard";
 import NewProject from "@/pages/NewProject";
@@ -21,8 +22,9 @@ function AppContent() {
       <AppLayout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/project/new" element={<NewProject />} />
+          <Route path="/project/new" element={<NewProject mode="new" />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/project/:id/edit" element={<NewProject mode="resume" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
@@ -32,13 +34,15 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

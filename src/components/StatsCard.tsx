@@ -8,17 +8,17 @@ interface StatsCardProps {
 }
 
 const accentStyles = {
-  indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
-  cyan: "bg-cyan-50 text-cyan-600 border-cyan-100",
-  emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  amber: "bg-amber-50 text-amber-600 border-amber-100",
+  indigo: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50",
+  cyan: "bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/50",
+  emerald: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50",
+  amber: "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50",
 };
 
 const iconBg = {
-  indigo: "bg-indigo-100 text-indigo-600",
-  cyan: "bg-cyan-100 text-cyan-600",
-  emerald: "bg-emerald-100 text-emerald-600",
-  amber: "bg-amber-100 text-amber-600",
+  indigo: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300",
+  cyan: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300",
+  emerald: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300",
+  amber: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300",
 };
 
 export function StatsCard({ label, value, icon, accent = "indigo" }: StatsCardProps) {

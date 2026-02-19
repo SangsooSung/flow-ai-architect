@@ -3,6 +3,7 @@ import { useProjectContext } from "@/contexts/ProjectContext";
 import { PhaseStepper } from "@/components/PhaseStepper";
 import { Phase1Output } from "@/components/Phase1Output";
 import { Phase3Panel } from "@/components/Phase3Panel";
+import { Phase4Panel } from "@/components/Phase4Panel";
 import { SchemaDict } from "@/components/phase2/SchemaDict";
 import { LogicEngine } from "@/components/phase2/LogicEngine";
 import { RealityCheck } from "@/components/phase2/RealityCheck";
@@ -20,6 +21,8 @@ import {
   ShieldCheck,
   GitBranch,
   Loader2,
+  Edit,
+  Code,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,9 +31,10 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProject, deleteProject, isLoading } = useProjectContext();
-  const [activeTab, setActiveTab] = useState<"overview" | "phase1" | "phase2" | "phase3">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "phase1" | "phase2" | "phase3" | "phase4">("overview");
   const [phase2SubTab, setPhase2SubTab] = useState<"schema" | "logic" | "validation" | "entities">("schema");
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const project = id ? getProject(id) : null;
 
@@ -61,11 +65,16 @@ export default function ProjectDetail() {
     );
   }
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     setDeleting(true);
+    setShowDeleteConfirm(false);
     try {
       await deleteProject(project.id);
-      toast.success("Project deleted");
+      toast.success("Project deleted successfully");
       navigate("/");
     } catch (error) {
       toast.error("Failed to delete project");
@@ -78,12 +87,17 @@ export default function ProjectDetail() {
   if (project.phase1) completedPhases.push(1);
   if (project.phase2) completedPhases.push(2);
   if (project.phase3) completedPhases.push(3);
+  if (project.phase4) completedPhases.push(4);
+
+  // Check if there are any incomplete phases
+  const hasIncompletePhases = !project.phase1 || !project.phase2 || !project.phase3 || !project.phase4;
 
   const tabs = [
     { key: "overview" as const, label: "Overview", icon: Layers },
     ...(project.phase1 ? [{ key: "phase1" as const, label: "Phase 1: Context", icon: FileText }] : []),
     ...(project.phase2 ? [{ key: "phase2" as const, label: "Phase 2: Analysis", icon: Database }] : []),
     ...(project.phase3 ? [{ key: "phase3" as const, label: "Phase 3: PRD", icon: CheckCircle2 }] : []),
+    ...(project.phase4 ? [{ key: "phase4" as const, label: "Phase 4: Prompts", icon: Code }] : []),
   ];
 
   const phase2Tabs = [
@@ -119,18 +133,29 @@ export default function ProjectDetail() {
               </span>
             </div>
           </div>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-rose-300 hover:text-rose-600 hover:bg-rose-50/50 transition-all self-start disabled:opacity-50"
-          >
-            {deleting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4" />
+          <div className="flex items-center gap-2">
+            {hasIncompletePhases && (
+              <Link
+                to={`/project/${project.id}/edit`}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all shadow-sm"
+              >
+                <Edit className="w-4 h-4" />
+                Continue to Phase {project.currentPhase}
+              </Link>
             )}
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-rose-200 dark:border-rose-800/50 text-sm font-medium text-rose-600 dark:text-rose-400 hover:border-rose-400 dark:hover:border-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              {deleting ? "Deleting..." : "Delete Project"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -150,7 +175,7 @@ export default function ProjectDetail() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
               activeTab === tab.key
-                ? "bg-white text-indigo-700 shadow-sm"
+                ? "bg-card text-indigo-700 dark:text-indigo-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -194,13 +219,13 @@ export default function ProjectDetail() {
           )}
 
           {project.phase3 && (
-            <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <div className="mt-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <h4 className="font-semibold text-emerald-800">Project Complete</h4>
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h4 className="font-semibold text-emerald-800 dark:text-emerald-100">Project Complete</h4>
               </div>
-              <p className="text-sm text-emerald-700">
-                The ERP specification has been generated. Review the Phase 3 tab for the full PRD, 
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                The ERP specification has been generated. Review the Phase 3 tab for the full PRD,
                 architecture diagrams, and conflict resolution items.
               </p>
             </div>
@@ -215,15 +240,15 @@ export default function ProjectDetail() {
       {activeTab === "phase2" && project.phase2 && (
         <div className="space-y-5 animate-fade-in">
           {/* Phase 2 Sub-tabs */}
-          <div className="flex items-center gap-1 bg-cyan-50 rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-cyan-50 dark:bg-cyan-950/30 rounded-xl p-1">
             {phase2Tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setPhase2SubTab(tab.key)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all flex-1 justify-center ${
                   phase2SubTab === tab.key
-                    ? "bg-white text-cyan-700 shadow-sm"
-                    : "text-cyan-600 hover:text-cyan-800"
+                    ? "bg-card text-cyan-700 dark:text-cyan-300 shadow-sm"
+                    : "text-cyan-600 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-200"
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
@@ -251,6 +276,58 @@ export default function ProjectDetail() {
       {activeTab === "phase3" && project.phase3 && (
         <Phase3Panel data={project.phase3} />
       )}
+
+      {activeTab === "phase4" && project.phase4 && (
+        <Phase4Panel data={project.phase4} />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-slide-up border border-border">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Delete Project?</h3>
+            </div>
+
+            <p className="text-sm text-foreground mb-2">
+              Are you sure you want to delete <strong>{project.name}</strong>?
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              This will permanently delete all project data including Phase 1-4 analysis, PRD, and implementation prompts. This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 dark:hover:bg-rose-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Project
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -259,14 +336,14 @@ function StatusCard({ title, completed, detail }: { title: string; completed: bo
   return (
     <div className={`rounded-2xl border p-4 transition-all ${
       completed
-        ? "border-emerald-200 bg-emerald-50/30"
-        : "border-border/60 bg-white"
+        ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20"
+        : "border-border/60 bg-card"
     }`}>
       <div className="flex items-center gap-2 mb-2">
         {completed ? (
-          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         ) : (
-          <div className="w-5 h-5 rounded-full border-2 border-gray-200" />
+          <div className="w-5 h-5 rounded-full border-2 border-border" />
         )}
         <h4 className="text-sm font-semibold text-foreground">{title}</h4>
       </div>

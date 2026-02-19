@@ -21,7 +21,7 @@ export function Phase1Output({ data }: Phase1OutputProps) {
     <div className="space-y-3 animate-slide-up">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-soft" />
-        <span className="text-sm font-semibold text-emerald-700">Analysis Complete</span>
+        <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Analysis Complete</span>
       </div>
 
       {/* 1. Executive Summary */}
@@ -59,8 +59,8 @@ export function Phase1Output({ data }: Phase1OutputProps) {
       >
         <div className="space-y-2.5">
           {data.userRoles.map((role, i) => (
-            <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl bg-cyan-50/50">
-              <span className="px-2 py-0.5 rounded-lg bg-cyan-100 text-cyan-700 text-xs font-bold whitespace-nowrap">
+            <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/30">
+              <span className="px-2 py-0.5 rounded-lg bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 text-xs font-bold whitespace-nowrap">
                 {role.name}
               </span>
               <p className="text-sm text-foreground/80 leading-relaxed">{role.description}</p>
@@ -81,13 +81,13 @@ export function Phase1Output({ data }: Phase1OutputProps) {
             <div className="space-y-2">
               {data.businessLogic.currentState.map((step) => (
                 <div key={step.step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                     {step.step}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-foreground">{step.description}</p>
                     {step.conditional && (
-                      <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
                         <ArrowRight className="w-3 h-3" />
                         Condition: {step.conditional}
                       </p>
@@ -98,17 +98,17 @@ export function Phase1Output({ data }: Phase1OutputProps) {
             </div>
           </div>
           <div className="border-t border-border/40 pt-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-3">Future State (ERP)</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-3">Future State (ERP)</p>
             <div className="space-y-2">
               {data.businessLogic.futureState.map((step) => (
                 <div key={step.step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                     {step.step}
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-foreground">{step.description}</p>
                     {step.conditional && (
-                      <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
                         <ArrowRight className="w-3 h-3" />
                         Condition: {step.conditional}
                       </p>
@@ -131,22 +131,22 @@ export function Phase1Output({ data }: Phase1OutputProps) {
         <div className="space-y-4">
           {data.requirements.map((mod) => (
             <div key={mod.moduleName}>
-              <p className="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
                 {mod.moduleName}
               </p>
               <div className="space-y-1.5">
                 {mod.requirements.map((req) => (
-                  <div key={req.id} className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-indigo-50/40 transition-colors">
-                    <div className="w-4 h-4 rounded border-2 border-indigo-300 flex-shrink-0 mt-0.5" />
+                  <div key={req.id} className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-colors">
+                    <div className="w-4 h-4 rounded border-2 border-indigo-300 dark:border-indigo-700 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground">{req.description}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
                           req.priority === "High"
-                            ? "bg-rose-50 text-rose-600"
+                            ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300"
                             : req.priority === "Medium"
-                            ? "bg-amber-50 text-amber-600"
-                            : "bg-gray-100 text-gray-500"
+                            ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300"
+                            : "bg-muted text-muted-foreground"
                         }`}>
                           {req.priority}
                         </span>
@@ -172,11 +172,11 @@ export function Phase1Output({ data }: Phase1OutputProps) {
         badge="Action Required"
       >
         <div className="space-y-3">
-          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-3 border border-amber-200">
+          <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 border border-amber-200 dark:border-amber-800">
             The client referenced the following external files during the meeting. Upload these files in Phase 2 to validate and detail the requirements.
           </p>
           {data.artifactMapping.map((artifact) => (
-            <div key={artifact.id} className="border border-amber-200 rounded-xl p-3.5 bg-amber-50/30">
+            <div key={artifact.id} className="border border-amber-200 dark:border-amber-800 rounded-xl p-3.5 bg-amber-50/30 dark:bg-amber-950/20">
               <p className="font-semibold text-sm text-foreground flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-amber-500" />
                 {artifact.name}
@@ -184,7 +184,7 @@ export function Phase1Output({ data }: Phase1OutputProps) {
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{artifact.context}</p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {artifact.expectedFields.map((field) => (
-                  <span key={field} className="text-[11px] px-2 py-0.5 rounded-md bg-white border border-amber-200 text-amber-700 font-medium">
+                  <span key={field} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-medium">
                     {field}
                   </span>
                 ))}
@@ -205,7 +205,7 @@ export function Phase1Output({ data }: Phase1OutputProps) {
           {data.dataEntities.map((entity) => (
             <span
               key={entity}
-              className="px-3 py-1.5 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-700 text-sm font-mono font-medium"
+              className="px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300 text-sm font-mono font-medium"
             >
               {entity}
             </span>
@@ -222,8 +222,8 @@ export function Phase1Output({ data }: Phase1OutputProps) {
       >
         <div className="space-y-2">
           {data.openQuestions.map((q, i) => (
-            <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/50">
-              <span className="w-5 h-5 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+            <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/30">
+              <span className="w-5 h-5 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                 {i + 1}
               </span>
               <p className="text-sm text-foreground">{q}</p>

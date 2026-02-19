@@ -1,4 +1,4 @@
-import type { Phase1Data, Phase2Data, Phase3Data } from './project';
+import type { Phase1Data, Phase2Data, Phase3Data, Phase4Data } from './project';
 
 export type Json =
   | string
@@ -21,6 +21,7 @@ export interface Database {
           phase1_data: Phase1Data | null;
           phase2_data: Phase2Data | null;
           phase3_data: Phase3Data | null;
+          phase4_data: Phase4Data | null;
           created_at: string;
           updated_at: string;
         };
@@ -33,6 +34,7 @@ export interface Database {
           phase1_data?: Phase1Data | null;
           phase2_data?: Phase2Data | null;
           phase3_data?: Phase3Data | null;
+          phase4_data?: Phase4Data | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -45,6 +47,7 @@ export interface Database {
           phase1_data?: Phase1Data | null;
           phase2_data?: Phase2Data | null;
           phase3_data?: Phase3Data | null;
+          phase4_data?: Phase4Data | null;
           updated_at?: string;
         };
       };

@@ -4,11 +4,12 @@ export interface Project {
   clientName: string;
   createdAt: string;
   updatedAt: string;
-  currentPhase: 1 | 2 | 3;
+  currentPhase: 1 | 2 | 3 | 4;
   status: "draft" | "in_progress" | "completed";
   phase1: Phase1Data | null;
   phase2: Phase2Data | null;
   phase3: Phase3Data | null;
+  phase4: Phase4Data | null;
 }
 
 // ─── Phase 1 ───────────────────────────────────────────
@@ -39,6 +40,7 @@ export interface WorkflowStep {
 export interface RequirementModule {
   moduleName: string;
   requirements: Requirement[];
+  inScope?: boolean; // User can mark module as in/out of scope
 }
 
 export interface Requirement {
@@ -56,6 +58,10 @@ export interface ArtifactReference {
   expectedFields: string[];
   status: "pending" | "uploaded" | "analyzed";
   fileName?: string;
+  inScope?: boolean; // User can mark artifact as in/out of scope
+  sheetName?: string; // Specific sheet/tab name in the spreadsheet
+  uploadedFile?: File; // Store the uploaded file object
+  availableSheets?: string[]; // Available sheet names from the uploaded file
 }
 
 // ─── Phase 2 (Enhanced) ────────────────────────────────
@@ -233,4 +239,85 @@ export interface EntityDefinition {
   name: string;
   fields: { name: string; type: string; required: boolean }[];
   relationships: string[];
+}
+
+// ─── Phase 4 (Implementation Prompts) ──────────────────────
+
+export interface Phase4Data {
+  generatedAt: string;
+  techStack: TechStackConfig;
+  prompts: PromptCollection;
+  metadata: Phase4Metadata;
+}
+
+export interface TechStackConfig {
+  backend: {
+    framework: 'Node.js + Express' | 'Django' | 'FastAPI' | 'ASP.NET Core';
+    database: 'PostgreSQL' | 'MySQL' | 'MongoDB' | 'SQL Server';
+    orm: 'Prisma' | 'TypeORM' | 'SQLAlchemy' | 'Entity Framework';
+  };
+  frontend: {
+    framework: 'React' | 'Vue' | 'Angular' | 'Svelte';
+    stateManagement: 'Redux' | 'Zustand' | 'Pinia' | 'Context API';
+    uiLibrary: 'Material-UI' | 'Ant Design' | 'Chakra UI' | 'Tailwind + shadcn';
+  };
+  deployment: {
+    platform: 'AWS' | 'Azure' | 'GCP' | 'Vercel' | 'Docker';
+    authentication: 'JWT' | 'OAuth2' | 'Auth0' | 'Supabase Auth';
+  };
+}
+
+export interface PromptCollection {
+  database: DatabasePrompts;
+  backend: ModulePrompts[];
+  frontend: ModulePrompts[];
+  integration: IntegrationPrompts;
+  testing: TestingPrompts;
+}
+
+export interface DatabasePrompts {
+  schemaDefinition: PromptCard;
+  migrations: PromptCard;
+  seedData: PromptCard;
+}
+
+export interface ModulePrompts {
+  moduleName: string;
+  prompts: PromptCard[];
+}
+
+export interface IntegrationPrompts {
+  authentication: PromptCard;
+  authorization: PromptCard;
+  apiClient: PromptCard;
+  errorHandling: PromptCard;
+  dataMigration: PromptCard;
+}
+
+export interface TestingPrompts {
+  unitTests: PromptCard;
+  integrationTests: PromptCard;
+  e2eTests: PromptCard;
+}
+
+export interface PromptCard {
+  id: string;
+  title: string;
+  description: string;
+  estimatedComplexity: 'Simple' | 'Moderate' | 'Complex';
+  estimatedTokens: number;
+  dependencies: string[];
+  prompt: string;
+  expectedOutputs: string[];
+  verificationCriteria: string[];
+  tags: string[];
+  usageCount?: number;
+  lastUsed?: string;
+}
+
+export interface Phase4Metadata {
+  totalPrompts: number;
+  estimatedImplementationTime: string;
+  implementationOrder: string[];
+  criticalPathPrompts: string[];
 }

@@ -7,13 +7,13 @@ interface ArchitectureViewProps {
 }
 
 const moduleColors: Record<string, { bg: string; border: string; text: string }> = {
-  Core: { bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-700" },
-  Pricing: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700" },
-  Inventory: { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700" },
-  CRM: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
-  O2C: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-  P2P: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
-  Compliance: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700" },
+  Core: { bg: "bg-slate-50 dark:bg-slate-950/30", border: "border-slate-200 dark:border-slate-800", text: "text-slate-700 dark:text-slate-300" },
+  Pricing: { bg: "bg-indigo-50 dark:bg-indigo-950/30", border: "border-indigo-200 dark:border-indigo-800", text: "text-indigo-700 dark:text-indigo-300" },
+  Inventory: { bg: "bg-cyan-50 dark:bg-cyan-950/30", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-700 dark:text-cyan-300" },
+  CRM: { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-300" },
+  O2C: { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300" },
+  P2P: { bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-200 dark:border-purple-800", text: "text-purple-700 dark:text-purple-300" },
+  Compliance: { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300" },
 };
 
 export function ArchitectureView({ architecture }: ArchitectureViewProps) {
@@ -72,8 +72,8 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
                         isSelected
                           ? `${colors.border} ${colors.bg} shadow-md`
                           : selectedEntity && hasRelation
-                          ? "border-indigo-300 bg-indigo-50/50"
-                          : "border-border/60 bg-white hover:border-indigo-200 hover:bg-indigo-50/30"
+                          ? "border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-950/30"
+                          : "border-border/60 bg-card hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/30"
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
@@ -96,18 +96,18 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
 
       {/* Selected Entity Detail */}
       {selectedEntityData && (
-        <div className="border-2 border-indigo-200 rounded-2xl bg-indigo-50/30 overflow-hidden animate-fade-in">
-          <div className="px-4 py-3 border-b border-indigo-200/60 bg-indigo-50 flex items-center justify-between">
+        <div className="border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 overflow-hidden animate-fade-in">
+          <div className="px-4 py-3 border-b border-indigo-200/60 dark:border-indigo-800/60 bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-indigo-600" />
-              <span className="font-mono font-bold text-indigo-900">{selectedEntityData.name}</span>
+              <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="font-mono font-bold text-indigo-900 dark:text-indigo-300">{selectedEntityData.name}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getModuleColor(selectedEntityData.module).bg} ${getModuleColor(selectedEntityData.module).text}`}>
                 {selectedEntityData.module}
               </span>
             </div>
             <button
               onClick={() => setSelectedEntity(null)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
             >
               Close
             </button>
@@ -121,7 +121,7 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
               </p>
               <div className="space-y-1.5">
                 {selectedEntityData.attributes.map((attr) => (
-                  <div key={attr.name} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-indigo-100">
+                  <div key={attr.name} className="flex items-center gap-2 p-2 rounded-lg bg-card border border-indigo-100 dark:border-indigo-900">
                     {attr.constraint?.includes("PRIMARY") && <Key className="w-3 h-3 text-amber-500" />}
                     {attr.constraint?.includes("FK") && <Link2 className="w-3 h-3 text-cyan-500" />}
                     <span className="font-mono text-xs font-medium text-foreground">{attr.name}</span>
@@ -142,15 +142,15 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
                 {relatedRelationships.map((rel, i) => {
                   const isFrom = rel.from === selectedEntity;
                   return (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-indigo-100">
-                      <span className={`font-mono text-xs font-medium ${isFrom ? "text-indigo-600" : "text-muted-foreground"}`}>
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-card border border-indigo-100 dark:border-indigo-900">
+                      <span className={`font-mono text-xs font-medium ${isFrom ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"}`}>
                         {rel.from}
                       </span>
                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <span className={`font-mono text-xs font-medium ${!isFrom ? "text-indigo-600" : "text-muted-foreground"}`}>
+                      <span className={`font-mono text-xs font-medium ${!isFrom ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"}`}>
                         {rel.to}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 ml-auto">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-auto">
                         {rel.type}
                       </span>
                     </div>
@@ -166,11 +166,11 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
       )}
 
       {/* Relationships Summary */}
-      <div className="border border-border/60 rounded-2xl bg-white overflow-hidden">
+      <div className="border border-border/60 rounded-2xl bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-cyan-600" />
+          <Link2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           <h4 className="font-semibold text-sm text-foreground">All Relationships</h4>
-          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
+          <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 dark:text-cyan-300">
             {architecture.relationships.length}
           </span>
         </div>
@@ -184,7 +184,7 @@ export function ArchitectureView({ architecture }: ArchitectureViewProps) {
                 <ArrowRight className="w-3 h-3" />
               </div>
               <span className="font-mono text-xs font-medium text-foreground">{rel.to}</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 ml-auto">
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground ml-auto">
                 {rel.type}
               </span>
             </div>

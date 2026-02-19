@@ -22,8 +22,8 @@ export function EntityInference({ recommendations }: EntityInferenceProps) {
       {/* Recommendations */}
       <div className="space-y-4">
         {recommendations.map((rec, i) => (
-          <div key={i} className="border border-border/60 rounded-2xl bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/40 bg-gradient-to-r from-cyan-50/50 to-transparent">
+          <div key={i} className="border border-border/60 rounded-2xl bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border/40 bg-gradient-to-r from-cyan-50/50 dark:from-cyan-950/30 to-transparent">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <Database className="w-3.5 h-3.5" />
                 Source: {rec.sourceArtifact}
@@ -36,9 +36,9 @@ export function EntityInference({ recommendations }: EntityInferenceProps) {
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {rec.proposedEntities.map((entity, j) => (
                   <div key={entity.name} className="flex items-center gap-2">
-                    <div className="px-3 py-2 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 border-2 border-cyan-200 shadow-sm">
-                      <p className="font-mono font-bold text-sm text-cyan-800">{entity.name}</p>
-                      <p className="text-[10px] text-cyan-600 mt-0.5">{entity.linkedBy}</p>
+                    <div className="px-3 py-2 rounded-xl bg-gradient-to-br from-cyan-50 dark:from-cyan-950/30 to-blue-50 dark:to-blue-950/20 border-2 border-cyan-200 dark:border-cyan-800 shadow-sm">
+                      <p className="font-mono font-bold text-sm text-cyan-800 dark:text-cyan-300">{entity.name}</p>
+                      <p className="text-[10px] text-cyan-600 dark:text-cyan-400 mt-0.5">{entity.linkedBy}</p>
                     </div>
                     {j < rec.proposedEntities.length - 1 && (
                       <ArrowRight className="w-4 h-4 text-cyan-400" />
@@ -48,11 +48,11 @@ export function EntityInference({ recommendations }: EntityInferenceProps) {
               </div>
 
               {/* Rationale */}
-              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
                 <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-amber-800 mb-0.5">Rationale</p>
-                  <p className="text-xs text-amber-700 leading-relaxed">{rec.rationale}</p>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-0.5">Rationale</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">{rec.rationale}</p>
                 </div>
               </div>
             </div>
@@ -61,9 +61,9 @@ export function EntityInference({ recommendations }: EntityInferenceProps) {
       </div>
 
       {/* Info Note */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start gap-2">
-        <GitBranch className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-slate-600">
+      <div className="bg-slate-50 dark:bg-slate-950/50 border border-slate-200 rounded-xl p-3 flex items-start gap-2">
+        <GitBranch className="w-4 h-4 text-slate-500 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           <strong>Normalization:</strong> Flat spreadsheets often combine multiple logical entities. 
           Splitting them into separate tables improves data integrity, reduces redundancy, and enables 
           flexible querying in the ERP database.

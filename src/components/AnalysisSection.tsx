@@ -20,19 +20,19 @@ const borderColors = {
 };
 
 const iconBg = {
-  indigo: "bg-indigo-100 text-indigo-600",
-  cyan: "bg-cyan-100 text-cyan-600",
-  emerald: "bg-emerald-100 text-emerald-600",
-  amber: "bg-amber-100 text-amber-600",
-  rose: "bg-rose-100 text-rose-600",
+  indigo: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400",
+  cyan: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400",
+  emerald: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400",
+  rose: "bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400",
 };
 
 const badgeColors = {
-  indigo: "bg-indigo-50 text-indigo-700",
-  cyan: "bg-cyan-50 text-cyan-700",
-  emerald: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-700",
-  rose: "bg-rose-50 text-rose-700",
+  indigo: "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300",
+  cyan: "bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300",
+  emerald: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300",
+  amber: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300",
+  rose: "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300",
 };
 
 export function AnalysisSection({
@@ -47,7 +47,7 @@ export function AnalysisSection({
 
   return (
     <div
-      className={`border border-border/60 rounded-2xl bg-white overflow-hidden border-l-4 ${borderColors[accentColor]} transition-all duration-200 hover:shadow-sm`}
+      className={`border border-border/60 rounded-2xl bg-card overflow-hidden border-l-4 ${borderColors[accentColor]} transition-all duration-200 hover:shadow-sm`}
     >
       <button
         onClick={() => setOpen(!open)}

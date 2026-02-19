@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, FileText, X, Sparkles } from "lucide-react";
+import { Upload, FileText, X, Sparkles, Loader2 } from "lucide-react";
 
 interface TranscriptInputProps {
   onAnalyze: (transcript: string) => void;
@@ -46,9 +46,9 @@ export function TranscriptInput({ onAnalyze, processing }: TranscriptInputProps)
         <h3 className="text-lg font-bold text-foreground mb-1">Meeting Transcript</h3>
         <p className="text-sm text-muted-foreground">
           Paste your meeting transcript below or upload a text file. Use speaker tags like{" "}
-          <code className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md font-mono">[Client]</code>{" "}
+          <code className="text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md font-mono">[Client]</code>{" "}
           and{" "}
-          <code className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md font-mono">[Flow_Engineer]</code>.
+          <code className="text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md font-mono">[Flow_Engineer]</code>.
         </p>
       </div>
 
@@ -59,16 +59,16 @@ export function TranscriptInput({ onAnalyze, processing }: TranscriptInputProps)
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-2xl transition-all duration-200 ${
           dragOver
-            ? "border-indigo-400 bg-indigo-50/50"
-            : "border-border hover:border-indigo-300 hover:bg-indigo-50/20"
+            ? "border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+            : "border-border hover:border-indigo-300 hover:bg-indigo-50/20 dark:hover:bg-indigo-950/20"
         }`}
       >
         {fileName && (
           <div className="flex items-center gap-2 px-4 pt-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-lg text-sm">
-              <FileText className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-indigo-700 font-medium">{fileName}</span>
-              <button onClick={clearFile} className="text-indigo-400 hover:text-indigo-600 transition-colors">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg text-sm">
+              <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span className="text-indigo-700 dark:text-indigo-300 font-medium">{fileName}</span>
+              <button onClick={clearFile} className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -101,7 +101,7 @@ export function TranscriptInput({ onAnalyze, processing }: TranscriptInputProps)
         />
         <button
           onClick={() => fileRef.current?.click()}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all"
         >
           <Upload className="w-4 h-4" />
           Upload File
@@ -110,10 +110,19 @@ export function TranscriptInput({ onAnalyze, processing }: TranscriptInputProps)
         <button
           onClick={() => onAnalyze(transcript)}
           disabled={!transcript.trim() || processing}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none sm:ml-auto"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none sm:ml-auto"
         >
-          <Sparkles className="w-4 h-4" />
-          {processing ? "Analyzing..." : "Analyze Transcript"}
+          {processing ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Analyze Transcript
+            </>
+          )}
         </button>
       </div>
     </div>

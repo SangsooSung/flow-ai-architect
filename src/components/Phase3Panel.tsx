@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Phase3Data } from "@/types/project";
 import { ProjectOverviewSection } from "./phase3/ProjectOverviewSection";
 import { ArchitectureView } from "./phase3/ArchitectureView";
 import { UserFlowsView } from "./phase3/UserFlowsView";
 import { MigrationPlanView } from "./phase3/MigrationPlanView";
 import { ConflictResolutionView } from "./phase3/ConflictResolutionView";
+import { generateFullPRD } from "@/lib/prdGenerator";
 import {
   FileText,
   Copy,
@@ -31,15 +32,18 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [copied, setCopied] = useState(false);
 
+  // Generate full PRD from structured data (memoized to avoid regeneration on every render)
+  const fullPRD = useMemo(() => generateFullPRD(data), [data]);
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(data.prdMarkdown);
+    navigator.clipboard.writeText(fullPRD);
     setCopied(true);
     toast.success("PRD copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const blob = new Blob([data.prdMarkdown], { type: "text/markdown" });
+    const blob = new Blob([fullPRD], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -78,17 +82,17 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
       <div className="flex items-center gap-2">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all"
         >
           {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-          {copied ? "Copied!" : "Copy Markdown"}
+          {copied ? "Copied!" : "Copy PRD"}
         </button>
         <button
           onClick={handleDownload}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border text-sm font-medium text-muted-foreground hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all"
         >
           <Download className="w-4 h-4" />
-          Download .md
+          Download Full PRD
         </button>
       </div>
 
@@ -100,7 +104,7 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               activeTab === tab.key
-                ? "bg-white text-indigo-700 shadow-sm"
+                ? "bg-card text-indigo-700 dark:text-indigo-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -141,7 +145,7 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
         )}
 
         {activeTab === "document" && (
-          <DocumentView markdown={data.prdMarkdown} />
+          <DocumentView markdown={fullPRD} />
         )}
 
         {activeTab === "modules" && (
@@ -155,12 +159,12 @@ export function Phase3Panel({ data }: Phase3PanelProps) {
 function ConfidenceBadge({ confidence, criticalConflicts }: { confidence: number; criticalConflicts: number }) {
   const hasIssues = criticalConflicts > 0;
   const color = hasIssues
-    ? "bg-rose-50 text-rose-700 border-rose-200"
+    ? "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
     : confidence >= 80
-    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
     : confidence >= 60
-    ? "bg-amber-50 text-amber-700 border-amber-200"
-    : "bg-rose-50 text-rose-700 border-rose-200";
+    ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+    : "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800";
 
   const icon = hasIssues ? (
     <AlertTriangle className="w-4 h-4" />
@@ -187,7 +191,7 @@ function DocumentView({ markdown }: { markdown: string }) {
   const lines = markdown.split("\n");
 
   return (
-    <div className="border border-border/60 rounded-2xl bg-white p-5 md:p-8 max-h-[600px] overflow-y-auto">
+    <div className="border border-border/60 rounded-2xl bg-card p-5 md:p-8 max-h-[600px] overflow-y-auto">
       <div className="prose prose-sm max-w-none">
         {lines.map((line, i) => {
           if (line.startsWith("# ")) {
@@ -234,7 +238,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
-        <code key={i} className="text-xs bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md font-mono">
+        <code key={i} className="text-xs bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-md font-mono">
           {part.slice(1, -1)}
         </code>
       );
@@ -251,10 +255,10 @@ function renderInlineMarkdown(text: string): React.ReactNode {
 
 function ModulesView({ data }: { data: Phase3Data }) {
   const priorityColors = {
-    Critical: "bg-rose-50 text-rose-700 border-rose-200",
-    High: "bg-amber-50 text-amber-700 border-amber-200",
-    Medium: "bg-cyan-50 text-cyan-700 border-cyan-200",
-    Low: "bg-gray-50 text-gray-600 border-gray-200",
+    Critical: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+    High: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    Medium: "bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800",
+    Low: "bg-muted text-muted-foreground border-border",
   };
 
   return (
@@ -271,10 +275,10 @@ function ModulesView({ data }: { data: Phase3Data }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {data.modules.map((mod) => (
-          <div key={mod.name} className="border border-border/60 rounded-2xl bg-white overflow-hidden hover:shadow-md transition-shadow">
+          <div key={mod.name} className="border border-border/60 rounded-2xl bg-card overflow-hidden hover:shadow-md transition-shadow">
             <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-indigo-600" />
+                <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span className="font-semibold text-sm text-foreground">{mod.name}</span>
               </div>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${priorityColors[mod.priority]}`}>
@@ -285,7 +289,7 @@ function ModulesView({ data }: { data: Phase3Data }) {
               <p className="text-xs text-muted-foreground mb-3">{mod.description}</p>
               <div className="flex flex-wrap gap-1.5">
                 {mod.requirements.map((req) => (
-                  <span key={req} className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 font-mono">
+                  <span key={req} className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-mono">
                     {req}
                   </span>
                 ))}
