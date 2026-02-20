@@ -1,0 +1,21 @@
+{
+  "name": "zoom-bot",
+  "version": "1.0.0",
+  "description": "Zoom Meeting SDK bot for Flow AI Architect - joins meetings, captures audio, and transcribes via Amazon Transcribe",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-transcribe-streaming": "^3.500.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

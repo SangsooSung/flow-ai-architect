@@ -25,14 +25,23 @@ function mapRowToProject(row: ProjectRow): Project {
 export function useProjects() {
   const queryClient = useQueryClient();
 
-  // Fetch all projects from Supabase
+  // Fetch projects scoped to the current user
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let query = supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Filter by user_id if authenticated
+      if (user) {
+        query = query.or(`user_id.eq.${user.id},user_id.is.null`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -43,6 +52,8 @@ export function useProjects() {
   // Create project mutation
   const createMutation = useMutation({
     mutationFn: async ({ name, clientName }: { name: string; clientName: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -50,6 +61,7 @@ export function useProjects() {
           client_name: clientName,
           current_phase: 1,
           status: 'draft',
+          user_id: user?.id ?? null,
           phase1_data: null,
           phase2_data: null,
           phase3_data: null,

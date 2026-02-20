@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useProjectContext } from "@/contexts/ProjectContext";
 import { PhaseStepper } from "@/components/PhaseStepper";
 import { TranscriptInput } from "@/components/TranscriptInput";
@@ -23,8 +23,13 @@ interface NewProjectProps {
 
 export default function NewProject({ mode }: NewProjectProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { createProject, updatePhase1, updatePhase2, updatePhase3, updatePhase4, getProject } = useProjectContext();
+
+  // Pre-populated transcript from Zoom meeting (via navigation state)
+  const prePopulatedTranscript = (location.state as { transcript?: string })?.transcript;
+  const prePopulatedMeetingId = (location.state as { meetingId?: string })?.meetingId;
 
   const [step, setStep] = useState<"setup" | "phases">(mode === 'resume' ? 'phases' : 'setup');
   const [projectName, setProjectName] = useState("");
@@ -468,7 +473,12 @@ export default function NewProject({ mode }: NewProjectProps) {
       {/* Phase Content */}
       <div className="min-h-[400px]">
         {currentPhase === 1 && !phase1Data && (
-          <TranscriptInput onAnalyze={handleAnalyzeTranscript} processing={processing} />
+          <TranscriptInput
+            onAnalyze={handleAnalyzeTranscript}
+            processing={processing}
+            initialTranscript={prePopulatedTranscript}
+            initialMeetingId={prePopulatedMeetingId}
+          />
         )}
 
         {currentPhase === 1 && phase1Data && !showingScopeSelector && (

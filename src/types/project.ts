@@ -16,6 +16,7 @@ export interface Project {
 
 export interface Phase1Data {
   transcript: string;
+  meetingId?: string;
   executiveSummary: {
     goal: string;
     painPoints: string[];
