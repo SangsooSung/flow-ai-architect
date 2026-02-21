@@ -1,4 +1,4 @@
-import { Video, Clock, CheckCircle2, AlertCircle, Loader2, FileText } from "lucide-react";
+import { Video, Users, Clock, CheckCircle2, AlertCircle, Loader2, FileText } from "lucide-react";
 import type { ZoomMeetingRow } from "@/types/database";
 
 interface ZoomMeetingCardProps {
@@ -25,6 +25,7 @@ export function ZoomMeetingCard({
 }: ZoomMeetingCardProps) {
   const config = statusConfig[meeting.status] || statusConfig.scheduled;
   const StatusIcon = config.icon;
+  const isGoogleMeet = meeting.platform === "google_meet";
   const isAnimating = meeting.status === "bot_joining" || meeting.status === "processing";
 
   const duration = meeting.started_at && meeting.ended_at
@@ -36,9 +37,14 @@ export function ZoomMeetingCard({
   return (
     <div className="border-2 border-border rounded-2xl p-4 bg-card hover:border-indigo-200 dark:hover:border-indigo-800 transition-all">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {isGoogleMeet ? (
+            <Users className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+          ) : (
+            <Video className="w-4 h-4 text-blue-500 flex-shrink-0" />
+          )}
           <h3 className="font-semibold text-foreground truncate text-sm">
-            {meeting.topic || "Zoom Meeting"}
+            {meeting.topic || (isGoogleMeet ? "Google Meet" : "Zoom Meeting")}
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(meeting.created_at).toLocaleDateString(undefined, {

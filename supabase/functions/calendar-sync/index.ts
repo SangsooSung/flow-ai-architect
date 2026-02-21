@@ -7,6 +7,7 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
 
 const ZOOM_URL_PATTERN = /https:\/\/[\w.-]+\.zoom\.us\/j\/(\d+)/g;
+const GMEET_URL_PATTERN = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/g;
 
 serve(async (_req: Request) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -70,6 +71,7 @@ serve(async (_req: Request) => {
             JSON.stringify(event.conferenceData || {}),
           ].join(" ");
 
+          // Detect Zoom meetings
           const zoomMatches = [...searchText.matchAll(ZOOM_URL_PATTERN)];
 
           for (const match of zoomMatches) {
@@ -92,6 +94,41 @@ serve(async (_req: Request) => {
                 meeting_url: meetingUrl,
                 topic: event.summary || "Calendar Meeting",
                 status: "scheduled",
+                platform: "zoom",
+                started_at: event.start?.dateTime || event.start?.date,
+              });
+              synced++;
+            }
+          }
+
+          // Detect Google Meet meetings (from URL or hangoutLink)
+          const gmeetSearchText = [
+            searchText,
+            event.hangoutLink || "",
+          ].join(" ");
+          const gmeetMatches = [...gmeetSearchText.matchAll(GMEET_URL_PATTERN)];
+
+          for (const match of gmeetMatches) {
+            const meetingUrl = `https://meet.google.com/${match[1]}`;
+            const googleMeetCode = match[1];
+
+            // Check if we already have this meeting
+            const { data: existing } = await supabase
+              .from("zoom_meetings")
+              .select("id")
+              .eq("user_id", connection.user_id)
+              .eq("google_meet_code", googleMeetCode)
+              .maybeSingle();
+
+            if (!existing) {
+              // Create meeting record
+              await supabase.from("zoom_meetings").insert({
+                user_id: connection.user_id,
+                google_meet_code: googleMeetCode,
+                meeting_url: meetingUrl,
+                topic: event.summary || "Calendar Meeting",
+                status: "scheduled",
+                platform: "google_meet",
                 started_at: event.start?.dateTime || event.start?.date,
               });
               synced++;

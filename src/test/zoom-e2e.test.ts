@@ -7,8 +7,11 @@ import {
   mockMeetingInProgress,
   mockMeetingCompleted,
   mockMeetingFailed,
+  mockGoogleMeetScheduled,
+  mockGoogleMeetCompleted,
   mockTranscriptFromRecording,
   mockTranscriptFromBot,
+  mockGoogleMeetTranscript,
   mockTranscriptContent,
   mockCalendarConnection,
   mockNotificationPrefs,
@@ -303,27 +306,47 @@ describe('E2E: Phase 3 - Google Calendar Auto-Join', () => {
       expect(connection.refresh_token).toBeDefined()
     })
 
-    it('should detect Zoom meetings from calendar events', () => {
+    it('should detect Zoom and Google Meet meetings from calendar events', () => {
       const ZOOM_URL_PATTERN = /https:\/\/[\w.-]+\.zoom\.us\/j\/(\d+)/g
+      const GMEET_URL_PATTERN = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/g
 
-      const detectedMeetings: { topic: string; meetingId: string }[] = []
+      const detectedMeetings: { topic: string; meetingId: string; platform: string }[] = []
 
       SAMPLE_CALENDAR_EVENTS.forEach((event) => {
-        const searchText = `${event.description} ${event.location}`
-        const matches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
+        const searchText = `${event.description} ${event.location} ${event.hangoutLink}`
 
-        matches.forEach((match) => {
+        const zoomMatches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
+        zoomMatches.forEach((match) => {
           detectedMeetings.push({
             topic: event.summary,
             meetingId: match[1],
+            platform: 'zoom',
+          })
+        })
+
+        const gmeetMatches = [...searchText.matchAll(GMEET_URL_PATTERN)]
+        gmeetMatches.forEach((match) => {
+          detectedMeetings.push({
+            topic: event.summary,
+            meetingId: match[1],
+            platform: 'google_meet',
           })
         })
       })
 
-      // Should detect exactly 2 Zoom meetings from 4 calendar events
-      expect(detectedMeetings).toHaveLength(2)
-      expect(detectedMeetings[0].meetingId).toBe('1234567890')
-      expect(detectedMeetings[1].meetingId).toBe('9876543210')
+      // Should detect 2 Zoom + 2 Google Meet = 4 meetings from 6 calendar events
+      expect(detectedMeetings).toHaveLength(4)
+
+      const zoomMeetings = detectedMeetings.filter((m) => m.platform === 'zoom')
+      const gmeetMeetings = detectedMeetings.filter((m) => m.platform === 'google_meet')
+
+      expect(zoomMeetings).toHaveLength(2)
+      expect(zoomMeetings[0].meetingId).toBe('1234567890')
+      expect(zoomMeetings[1].meetingId).toBe('9876543210')
+
+      expect(gmeetMeetings).toHaveLength(2)
+      expect(gmeetMeetings[0].meetingId).toBe('abc-defg-hij')
+      expect(gmeetMeetings[1].meetingId).toBe('xyz-abcd-efg')
     })
 
     it('should create zoom_meeting records for detected meetings', () => {
@@ -521,6 +544,65 @@ describe('E2E: Cross-Feature Integration', () => {
       expect(navigationState.transcript).toBeDefined()
       expect(navigationState.transcript.length).toBeGreaterThan(0)
       expect(navigationState.meetingId).toBe(mockMeetingCompleted.id)
+    })
+  })
+
+  describe('Cross-Platform: Google Meet → Transcript → Project', () => {
+    it('should follow Google Meet bot lifecycle: launch → join → record → complete', () => {
+      // Step 1: User enters Google Meet URL and clicks "Send Bot"
+      const meetingUrl = 'https://meet.google.com/abc-defg-hij'
+      const gmeetRegex = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/
+      const match = meetingUrl.match(gmeetRegex)
+      expect(match).not.toBeNull()
+      expect(match![1]).toBe('abc-defg-hij')
+
+      // Step 2: Platform auto-detected as google_meet
+      const zoomRegex = /https:\/\/[\w.-]+\.zoom\.us\/j\/(\d+)/
+      const isZoom = zoomRegex.test(meetingUrl)
+      const isGmeet = gmeetRegex.test(meetingUrl)
+      const platform = isZoom ? 'zoom' : isGmeet ? 'google_meet' : null
+      expect(platform).toBe('google_meet')
+
+      // Step 3: Meeting record created with google_meet platform
+      const meeting = { ...mockGoogleMeetScheduled, status: 'bot_joining' as ZoomMeetingStatus }
+      expect(meeting.platform).toBe('google_meet')
+      expect(meeting.google_meet_code).toBe('abc-defg-hij')
+      expect(meeting.zoom_meeting_id).toBeNull()
+
+      // Step 4: Bot joins via Puppeteer, captures audio, streams to Transcribe
+      meeting.status = 'in_progress'
+      expect(meeting.status).toBe('in_progress')
+
+      // Step 5: Meeting ends, transcript stored with google_meet_bot source
+      meeting.status = 'completed'
+      const transcript = mockGoogleMeetTranscript
+      expect(transcript.source).toBe('google_meet_bot')
+      expect(transcript.content).toBeDefined()
+      expect(transcript.content.length).toBeGreaterThan(0)
+    })
+
+    it('should use Google Meet transcript for Phase 1 analysis', () => {
+      // Google Meet transcript is the same format as Zoom transcript
+      const transcript = mockGoogleMeetTranscript
+      expect(transcript.content).toContain('[Speaker')
+      expect(transcript.content.length).toBeGreaterThan(100)
+
+      // Phase 1 should work identically regardless of source
+      const phase1Data = mockPhase1Data
+      expect(phase1Data.executiveSummary).toBeDefined()
+      expect(phase1Data.requirements.length).toBeGreaterThan(0)
+    })
+
+    it('should display correct platform icon and fallback topic', () => {
+      // Google Meet meetings show green Users icon
+      expect(mockGoogleMeetScheduled.platform).toBe('google_meet')
+      const gmeetFallbackTopic = mockGoogleMeetScheduled.topic || 'Google Meet'
+      expect(gmeetFallbackTopic).toBeDefined()
+
+      // Zoom meetings show blue Video icon
+      expect(mockMeetingScheduled.platform).toBe('zoom')
+      const zoomFallbackTopic = mockMeetingScheduled.topic || 'Zoom Meeting'
+      expect(zoomFallbackTopic).toBeDefined()
     })
   })
 

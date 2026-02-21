@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Video, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Video, Users, Loader2, Plus, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { ZoomMeetingCard } from "@/components/ZoomMeetingCard";
@@ -82,10 +82,11 @@ export default function Meetings() {
   const handleLaunchBot = async () => {
     if (!meetingUrl.trim() || !user) return;
 
-    // Validate Zoom URL
+    // Validate Zoom or Google Meet URL
     const zoomUrlPattern = /https:\/\/[\w.-]+\.zoom\.us\/j\/\d+/;
-    if (!zoomUrlPattern.test(meetingUrl)) {
-      toast.error("Please enter a valid Zoom meeting URL");
+    const gmeetUrlPattern = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/;
+    if (!zoomUrlPattern.test(meetingUrl) && !gmeetUrlPattern.test(meetingUrl)) {
+      toast.error("Please enter a valid Zoom or Google Meet URL");
       return;
     }
 
@@ -93,7 +94,7 @@ export default function Meetings() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://dppjlzxdbsutmjcygitx.supabase.co";
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/zoom-bot-launch`,
+        `${supabaseUrl}/functions/v1/bot-launch`,
         {
           method: "POST",
           headers: {
@@ -150,14 +151,14 @@ export default function Meetings() {
           <div className="flex items-center gap-2 mb-2">
             <Video className="w-5 h-5 text-indigo-500" />
             <span className="text-xs font-bold uppercase tracking-widest text-indigo-500">
-              Zoom Integration
+              Meeting Integration
             </span>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
             Meetings
           </h1>
           <p className="text-muted-foreground mt-1.5 text-sm max-w-lg">
-            Manage Zoom meetings and access transcripts for project analysis.
+            Manage meetings and access transcripts for project analysis.
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
@@ -192,7 +193,7 @@ export default function Meetings() {
               type="text"
               value={meetingUrl}
               onChange={(e) => setMeetingUrl(e.target.value)}
-              placeholder="https://zoom.us/j/1234567890"
+              placeholder="https://zoom.us/j/... or https://meet.google.com/..."
               className="flex-1 px-4 py-2.5 rounded-xl border-2 border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-indigo-400 transition-all"
             />
             <button
@@ -228,7 +229,7 @@ export default function Meetings() {
           </div>
           <h3 className="text-lg font-bold text-foreground mb-2">No meetings yet</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-            Send a bot to a Zoom meeting or connect your Zoom account to capture meeting transcripts automatically.
+            Send a bot to a Zoom or Google Meet meeting, or connect your Zoom account to capture meeting transcripts automatically.
           </p>
         </div>
       ) : (

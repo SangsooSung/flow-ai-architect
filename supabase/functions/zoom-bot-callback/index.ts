@@ -38,6 +38,17 @@ serve(async (req: Request) => {
 
   try {
     if (status === "completed" && transcript) {
+      // Determine transcript source based on meeting platform
+      const { data: meetingRecord } = await supabase
+        .from("zoom_meetings")
+        .select("platform")
+        .eq("id", meeting_id)
+        .single();
+
+      const transcriptSource = meetingRecord?.platform === "google_meet"
+        ? "google_meet_bot"
+        : "live_bot";
+
       // Store the final transcript
       await supabase.from("transcripts").insert({
         meeting_id,
@@ -46,7 +57,7 @@ serve(async (req: Request) => {
         speaker_segments: speaker_segments || null,
         word_count: word_count || transcript.split(/\s+/).length,
         duration_seconds: duration_seconds || null,
-        source: "live_bot",
+        source: transcriptSource,
       });
 
       // Update meeting status

@@ -175,7 +175,7 @@ export default function Settings() {
             <h2 className="text-base font-bold text-foreground">Google Calendar</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">
-            Connect Google Calendar to automatically detect Zoom meetings and send a bot to record them.
+            Connect Google Calendar to automatically detect Zoom and Google Meet meetings and send a bot to record them.
           </p>
 
           {calendarConnection ? (
@@ -197,9 +197,9 @@ export default function Settings() {
 
               <label className="flex items-center justify-between px-4 py-3 rounded-xl border-2 border-border bg-card">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Auto-join Zoom meetings</p>
+                  <p className="text-sm font-medium text-foreground">Auto-join Zoom and Google Meet meetings</p>
                   <p className="text-xs text-muted-foreground">
-                    Automatically send a bot to Zoom meetings found in your calendar
+                    Automatically send a bot to Zoom and Google Meet meetings found in your calendar
                   </p>
                 </div>
                 <button

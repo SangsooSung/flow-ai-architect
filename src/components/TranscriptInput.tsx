@@ -116,7 +116,8 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
     if (!meetingUrl.trim() || !user) return;
 
     const zoomUrlPattern = /https:\/\/[\w.-]+\.zoom\.us\/j\/\d+/;
-    if (!zoomUrlPattern.test(meetingUrl)) {
+    const gmeetUrlPattern = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/;
+    if (!zoomUrlPattern.test(meetingUrl) && !gmeetUrlPattern.test(meetingUrl)) {
       return;
     }
 
@@ -124,7 +125,7 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://dppjlzxdbsutmjcygitx.supabase.co";
       const response = await fetch(
-        `${supabaseUrl}/functions/v1/zoom-bot-launch`,
+        `${supabaseUrl}/functions/v1/bot-launch`,
         {
           method: "POST",
           headers: {
@@ -158,7 +159,7 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: "paste", label: "Paste / Upload", icon: FileText },
-    { id: "zoom", label: "From Zoom", icon: Video },
+    { id: "zoom", label: "From Meetings", icon: Video },
     { id: "live", label: "Live Bot", icon: Send },
   ];
 
@@ -324,7 +325,7 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
       {activeTab === "live" && (
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Enter a Zoom meeting URL to send an AI bot that joins, records, and transcribes the meeting in real-time.
+            Enter a Zoom or Google Meet URL to send an AI bot that joins, records, and transcribes the meeting in real-time.
           </p>
 
           {activeMeetingId ? (
@@ -340,7 +341,7 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
                   type="text"
                   value={meetingUrl}
                   onChange={(e) => setMeetingUrl(e.target.value)}
-                  placeholder="https://zoom.us/j/1234567890"
+                  placeholder="https://zoom.us/j/... or https://meet.google.com/..."
                   className="flex-1 px-4 py-3 rounded-xl border-2 border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                 />
                 <button
@@ -360,7 +361,8 @@ export function TranscriptInput({ onAnalyze, processing, initialTranscript, init
               <div className="rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   The bot will appear as "AI Architect Bot" in the meeting participant list.
-                  All participants will see a recording consent prompt from Zoom.
+                  For Zoom meetings, all participants will see a recording consent prompt.
+                  For Google Meet, the bot will be visible as a participant.
                 </p>
               </div>
             </div>

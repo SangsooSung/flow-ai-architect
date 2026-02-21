@@ -88,10 +88,12 @@ export interface Database {
           id: string;
           user_id: string;
           project_id: string | null;
-          zoom_meeting_id: string;
+          zoom_meeting_id: string | null;
           meeting_url: string | null;
           topic: string | null;
           status: ZoomMeetingStatus;
+          platform: MeetingPlatform;
+          google_meet_code: string | null;
           bot_task_arn: string | null;
           started_at: string | null;
           ended_at: string | null;
@@ -102,10 +104,12 @@ export interface Database {
           id?: string;
           user_id: string;
           project_id?: string | null;
-          zoom_meeting_id: string;
+          zoom_meeting_id?: string | null;
           meeting_url?: string | null;
           topic?: string | null;
           status?: ZoomMeetingStatus;
+          platform?: MeetingPlatform;
+          google_meet_code?: string | null;
           bot_task_arn?: string | null;
           started_at?: string | null;
           ended_at?: string | null;
@@ -114,10 +118,12 @@ export interface Database {
         };
         Update: {
           project_id?: string | null;
-          zoom_meeting_id?: string;
+          zoom_meeting_id?: string | null;
           meeting_url?: string | null;
           topic?: string | null;
           status?: ZoomMeetingStatus;
+          platform?: MeetingPlatform;
+          google_meet_code?: string | null;
           bot_task_arn?: string | null;
           started_at?: string | null;
           ended_at?: string | null;
@@ -218,7 +224,8 @@ export interface Database {
 
 // Enum types
 export type ZoomMeetingStatus = 'scheduled' | 'bot_joining' | 'in_progress' | 'processing' | 'completed' | 'failed';
-export type TranscriptSource = 'zoom_recording' | 'live_bot' | 'manual_upload';
+export type TranscriptSource = 'zoom_recording' | 'live_bot' | 'manual_upload' | 'google_meet_bot';
+export type MeetingPlatform = 'zoom' | 'google_meet';
 
 // Helper types for projects
 export type ProjectRow = Database['public']['Tables']['projects']['Row'];

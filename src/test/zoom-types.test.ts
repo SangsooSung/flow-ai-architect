@@ -6,17 +6,21 @@ import {
   mockMeetingInProgress,
   mockMeetingCompleted,
   mockMeetingFailed,
+  mockGoogleMeetScheduled,
+  mockGoogleMeetCompleted,
   mockAllMeetings,
   mockTranscriptFromRecording,
   mockTranscriptFromBot,
+  mockGoogleMeetTranscript,
   mockCalendarConnection,
   mockNotificationPrefs,
   mockNotificationPrefsDisabled,
   mockUserId,
   VALID_MEETING_STATUSES,
   VALID_TRANSCRIPT_SOURCES,
+  VALID_MEETING_PLATFORMS,
 } from '@/data/mockZoomData'
-import type { ZoomMeetingStatus, TranscriptSource } from '@/types/database'
+import type { ZoomMeetingStatus, TranscriptSource, MeetingPlatform } from '@/types/database'
 
 /**
  * Modular Tests: Database Types & Zoom Data Structures
@@ -49,14 +53,26 @@ describe('Database Types: Zoom Integration', () => {
   })
 
   describe('TranscriptSource Enum', () => {
-    it('should define exactly 3 transcript sources', () => {
-      expect(VALID_TRANSCRIPT_SOURCES).toHaveLength(3)
+    it('should define exactly 4 transcript sources', () => {
+      expect(VALID_TRANSCRIPT_SOURCES).toHaveLength(4)
     })
 
     it('should contain all valid sources', () => {
       expect(VALID_TRANSCRIPT_SOURCES).toContain('zoom_recording')
       expect(VALID_TRANSCRIPT_SOURCES).toContain('live_bot')
       expect(VALID_TRANSCRIPT_SOURCES).toContain('manual_upload')
+      expect(VALID_TRANSCRIPT_SOURCES).toContain('google_meet_bot')
+    })
+  })
+
+  describe('MeetingPlatform Enum', () => {
+    it('should define exactly 2 meeting platforms', () => {
+      expect(VALID_MEETING_PLATFORMS).toHaveLength(2)
+    })
+
+    it('should contain zoom and google_meet', () => {
+      expect(VALID_MEETING_PLATFORMS).toContain('zoom')
+      expect(VALID_MEETING_PLATFORMS).toContain('google_meet')
     })
   })
 
@@ -98,19 +114,49 @@ describe('Database Types: Zoom Integration', () => {
       expect(mockMeetingScheduled.created_at).toBeDefined()
     })
 
-    it('should have valid zoom_meeting_id as numeric string', () => {
-      mockAllMeetings.forEach((meeting) => {
-        expect(meeting.zoom_meeting_id).toMatch(/^\d+$/)
-      })
+    it('should have valid zoom_meeting_id as numeric string for Zoom meetings', () => {
+      mockAllMeetings
+        .filter((m) => m.platform === 'zoom')
+        .forEach((meeting) => {
+          expect(meeting.zoom_meeting_id).toMatch(/^\d+$/)
+        })
+    })
+
+    it('should have null zoom_meeting_id for Google Meet meetings', () => {
+      mockAllMeetings
+        .filter((m) => m.platform === 'google_meet')
+        .forEach((meeting) => {
+          expect(meeting.zoom_meeting_id).toBeNull()
+        })
+    })
+
+    it('should have valid google_meet_code for Google Meet meetings', () => {
+      const gmeetCodeRegex = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/
+      mockAllMeetings
+        .filter((m) => m.platform === 'google_meet')
+        .forEach((meeting) => {
+          expect(meeting.google_meet_code).toMatch(gmeetCodeRegex)
+        })
     })
 
     it('should have valid meeting_url format', () => {
       const zoomUrlRegex = /^https:\/\/[\w.-]+\.zoom\.us\/j\/\d+$/
+      const gmeetUrlRegex = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/
       mockAllMeetings
         .filter((m) => m.meeting_url)
         .forEach((meeting) => {
-          expect(meeting.meeting_url).toMatch(zoomUrlRegex)
+          if (meeting.platform === 'google_meet') {
+            expect(meeting.meeting_url).toMatch(gmeetUrlRegex)
+          } else {
+            expect(meeting.meeting_url).toMatch(zoomUrlRegex)
+          }
         })
+    })
+
+    it('should have a valid platform for each meeting', () => {
+      mockAllMeetings.forEach((meeting) => {
+        expect(VALID_MEETING_PLATFORMS).toContain(meeting.platform as MeetingPlatform)
+      })
     })
 
     it('should have valid status for each meeting', () => {
@@ -175,9 +221,10 @@ describe('Database Types: Zoom Integration', () => {
       expect(VALID_TRANSCRIPT_SOURCES).toContain(mockTranscriptFromBot.source as TranscriptSource)
     })
 
-    it('should distinguish between recording and bot transcripts', () => {
+    it('should distinguish between recording, bot, and Google Meet transcripts', () => {
       expect(mockTranscriptFromRecording.source).toBe('zoom_recording')
       expect(mockTranscriptFromBot.source).toBe('live_bot')
+      expect(mockGoogleMeetTranscript.source).toBe('google_meet_bot')
     })
 
     it('should have speaker_segments as JSONB array', () => {

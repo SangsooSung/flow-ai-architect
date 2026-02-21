@@ -5,6 +5,8 @@ import {
   mockMeetingInProgress,
   mockMeetingCompleted,
   mockMeetingFailed,
+  mockGoogleMeetScheduled,
+  mockGoogleMeetCompleted,
   mockAllMeetings,
   mockTranscriptContent,
   mockTranscriptFromRecording,
@@ -72,17 +74,17 @@ describe('Zoom Meeting Lifecycle State Machine', () => {
     })
   })
 
-  it('should have one meeting per status in mock data', () => {
+  it('should have at least one meeting per status in mock data', () => {
     const statusCounts = new Map<string, number>()
     mockAllMeetings.forEach((m) => {
       statusCounts.set(m.status, (statusCounts.get(m.status) || 0) + 1)
     })
 
-    expect(statusCounts.get('scheduled')).toBe(1)
-    expect(statusCounts.get('bot_joining')).toBe(1)
-    expect(statusCounts.get('in_progress')).toBe(1)
-    expect(statusCounts.get('completed')).toBe(1)
-    expect(statusCounts.get('failed')).toBe(1)
+    expect(statusCounts.get('scheduled')).toBeGreaterThanOrEqual(1)
+    expect(statusCounts.get('bot_joining')).toBeGreaterThanOrEqual(1)
+    expect(statusCounts.get('in_progress')).toBeGreaterThanOrEqual(1)
+    expect(statusCounts.get('completed')).toBeGreaterThanOrEqual(1)
+    expect(statusCounts.get('failed')).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -234,8 +236,73 @@ describe('Zoom Meeting URL Parsing & Validation', () => {
   })
 })
 
-describe('Calendar Event Zoom URL Detection', () => {
+describe('Google Meet URL Parsing & Validation', () => {
+  const GMEET_URL_REGEX = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/
+
+  it('should parse standard Google Meet URL', () => {
+    const url = 'https://meet.google.com/abc-defg-hij'
+    const match = url.match(GMEET_URL_REGEX)
+    expect(match).not.toBeNull()
+    expect(match![1]).toBe('abc-defg-hij')
+  })
+
+  it('should extract meet code from Google Meet URL', () => {
+    const url = mockGoogleMeetScheduled.meeting_url!
+    const match = url.match(GMEET_URL_REGEX)
+    expect(match).not.toBeNull()
+    expect(match![1]).toBe(mockGoogleMeetScheduled.google_meet_code)
+  })
+
+  it('should reject non-Google Meet URLs', () => {
+    const invalidUrls = [
+      'https://teams.microsoft.com/l/meetup-join/xxx',
+      'https://us04web.zoom.us/j/1234567890',
+      'https://example.com/abc-defg-hij',
+      'not-a-url',
+      '',
+    ]
+
+    invalidUrls.forEach((url) => {
+      const match = url.match(GMEET_URL_REGEX)
+      expect(match).toBeNull()
+    })
+  })
+
+  it('should reject invalid Google Meet code formats', () => {
+    const invalidMeetUrls = [
+      'https://meet.google.com/',
+      'https://meet.google.com/abc',
+      'https://meet.google.com/abc-def-ghi',    // 3-3-3 not 3-4-3
+      'https://meet.google.com/ABC-DEFG-HIJ',   // uppercase
+    ]
+
+    invalidMeetUrls.forEach((url) => {
+      const match = url.match(GMEET_URL_REGEX)
+      expect(match).toBeNull()
+    })
+  })
+
+  it('should auto-detect platform from URL', () => {
+    const ZOOM_URL_REGEX_DETECT = /https:\/\/[\w.-]+\.zoom\.us\/j\/(\d+)/
+    const GMEET_URL_REGEX_DETECT = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/
+
+    const urls = [
+      { url: 'https://us04web.zoom.us/j/1234567890', expectedPlatform: 'zoom' },
+      { url: 'https://meet.google.com/abc-defg-hij', expectedPlatform: 'google_meet' },
+    ]
+
+    urls.forEach(({ url, expectedPlatform }) => {
+      const isZoom = ZOOM_URL_REGEX_DETECT.test(url)
+      const isGmeet = GMEET_URL_REGEX_DETECT.test(url)
+      const platform = isZoom ? 'zoom' : isGmeet ? 'google_meet' : null
+      expect(platform).toBe(expectedPlatform)
+    })
+  })
+})
+
+describe('Calendar Event Meeting URL Detection', () => {
   const ZOOM_URL_PATTERN = /https:\/\/[\w.-]+\.zoom\.us\/j\/(\d+)/g
+  const GMEET_URL_PATTERN = /https:\/\/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/g
 
   it('should detect Zoom URL in event description', () => {
     const event = SAMPLE_CALENDAR_EVENTS[0]
@@ -252,11 +319,13 @@ describe('Calendar Event Zoom URL Detection', () => {
     expect(matches[0][1]).toBe(event.expectedMeetingId)
   })
 
-  it('should not detect Zoom URL in non-Zoom events', () => {
-    const event = SAMPLE_CALENDAR_EVENTS[2] // Internal meeting, no Zoom
-    const searchText = `${event.description} ${event.location}`
-    const matches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
-    expect(matches).toHaveLength(0)
+  it('should not detect meeting URLs in non-meeting events', () => {
+    const event = SAMPLE_CALENDAR_EVENTS[2] // Internal meeting, no Zoom or Meet
+    const searchText = `${event.description} ${event.location} ${event.hangoutLink}`
+    const zoomMatches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
+    const gmeetMatches = [...searchText.matchAll(GMEET_URL_PATTERN)]
+    expect(zoomMatches).toHaveLength(0)
+    expect(gmeetMatches).toHaveLength(0)
   })
 
   it('should not match Microsoft Teams URLs as Zoom', () => {
@@ -266,16 +335,37 @@ describe('Calendar Event Zoom URL Detection', () => {
     expect(matches).toHaveLength(0)
   })
 
-  it('should correctly classify all sample events', () => {
-    SAMPLE_CALENDAR_EVENTS.forEach((event) => {
-      const searchText = `${event.description} ${event.location}`
-      const matches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
+  it('should detect Google Meet URL from hangoutLink', () => {
+    const event = SAMPLE_CALENDAR_EVENTS[4] // Google Meet via hangoutLink
+    const searchText = `${event.description} ${event.location} ${event.hangoutLink}`
+    const matches = [...searchText.matchAll(GMEET_URL_PATTERN)]
+    expect(matches).toHaveLength(1)
+    expect(matches[0][1]).toBe(event.expectedMeetingId)
+  })
 
-      if (event.expectedMeetingId) {
-        expect(matches.length).toBeGreaterThan(0)
-        expect(matches[0][1]).toBe(event.expectedMeetingId)
+  it('should detect Google Meet URL in event description', () => {
+    const event = SAMPLE_CALENDAR_EVENTS[5] // Google Meet in description
+    const searchText = `${event.description} ${event.location} ${event.hangoutLink}`
+    const matches = [...searchText.matchAll(GMEET_URL_PATTERN)]
+    expect(matches).toHaveLength(1)
+    expect(matches[0][1]).toBe(event.expectedMeetingId)
+  })
+
+  it('should correctly classify all sample events by platform', () => {
+    SAMPLE_CALENDAR_EVENTS.forEach((event) => {
+      const searchText = `${event.description} ${event.location} ${event.hangoutLink}`
+      const zoomMatches = [...searchText.matchAll(ZOOM_URL_PATTERN)]
+      const gmeetMatches = [...searchText.matchAll(GMEET_URL_PATTERN)]
+
+      if (event.expectedPlatform === 'zoom') {
+        expect(zoomMatches.length).toBeGreaterThan(0)
+        expect(zoomMatches[0][1]).toBe(event.expectedMeetingId)
+      } else if (event.expectedPlatform === 'google_meet') {
+        expect(gmeetMatches.length).toBeGreaterThan(0)
+        expect(gmeetMatches[0][1]).toBe(event.expectedMeetingId)
       } else {
-        expect(matches).toHaveLength(0)
+        expect(zoomMatches).toHaveLength(0)
+        expect(gmeetMatches).toHaveLength(0)
       }
     })
   })

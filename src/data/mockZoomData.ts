@@ -6,6 +6,7 @@ import type {
   NotificationPreferencesRow,
   ZoomMeetingStatus,
   TranscriptSource,
+  MeetingPlatform,
 } from '@/types/database';
 
 // ─── Mock User ─────────────────────────────────────────
@@ -33,6 +34,8 @@ export const mockMeetingScheduled: ZoomMeetingRow = {
   meeting_url: 'https://us04web.zoom.us/j/1234567890',
   topic: 'Acme Corp ERP Requirements Discovery',
   status: 'scheduled',
+  platform: 'zoom',
+  google_meet_code: null,
   bot_task_arn: null,
   started_at: null,
   ended_at: null,
@@ -93,12 +96,49 @@ export const mockMeetingFailed: ZoomMeetingRow = {
   updated_at: '2026-02-18T16:00:00Z',
 };
 
+// ─── Google Meet Meetings ────────────────────────────────
+export const mockGoogleMeetScheduled: ZoomMeetingRow = {
+  id: '770e8400-e29b-41d4-a716-446655440006',
+  user_id: mockUserId,
+  project_id: null,
+  zoom_meeting_id: null,
+  meeting_url: 'https://meet.google.com/abc-defg-hij',
+  topic: 'Acme Corp Weekly Sync',
+  status: 'scheduled',
+  platform: 'google_meet',
+  google_meet_code: 'abc-defg-hij',
+  bot_task_arn: null,
+  started_at: null,
+  ended_at: null,
+  created_at: '2026-02-20T09:00:00Z',
+  updated_at: '2026-02-20T09:00:00Z',
+};
+
+export const mockGoogleMeetCompleted: ZoomMeetingRow = {
+  id: '770e8400-e29b-41d4-a716-446655440007',
+  user_id: mockUserId,
+  project_id: null,
+  zoom_meeting_id: null,
+  meeting_url: 'https://meet.google.com/xyz-abcd-efg',
+  topic: 'Acme Corp Design Review',
+  status: 'completed',
+  platform: 'google_meet',
+  google_meet_code: 'xyz-abcd-efg',
+  bot_task_arn: 'arn:aws:ecs:us-east-1:123456789:task/zoom-bot-cluster/gmeet001',
+  started_at: '2026-02-19T16:00:00Z',
+  ended_at: '2026-02-19T17:00:00Z',
+  created_at: '2026-02-19T15:55:00Z',
+  updated_at: '2026-02-19T17:00:00Z',
+};
+
 export const mockAllMeetings: ZoomMeetingRow[] = [
   mockMeetingScheduled,
   mockMeetingBotJoining,
   mockMeetingInProgress,
   mockMeetingCompleted,
   mockMeetingFailed,
+  mockGoogleMeetScheduled,
+  mockGoogleMeetCompleted,
 ];
 
 // ─── Transcripts ───────────────────────────────────────
@@ -153,6 +193,21 @@ export const mockTranscriptFromBot: TranscriptRow = {
   created_at: '2026-02-19T12:00:00Z',
 };
 
+export const mockGoogleMeetTranscript: TranscriptRow = {
+  id: '880e8400-e29b-41d4-a716-446655440003',
+  meeting_id: mockGoogleMeetCompleted.id,
+  user_id: mockUserId,
+  content: mockTranscriptContent,
+  speaker_segments: [
+    { speaker: 'Speaker 0', text: 'Thanks for joining today.', startTime: 0, endTime: 5, confidence: 0.93 },
+    { speaker: 'Speaker 1', text: 'Sure. Right now, we manage everything through spreadsheets.', startTime: 6, endTime: 14, confidence: 0.90 },
+  ],
+  word_count: 191,
+  duration_seconds: 3600,
+  source: 'google_meet_bot',
+  created_at: '2026-02-19T17:05:00Z',
+};
+
 // ─── Calendar Connection ───────────────────────────────
 export const mockCalendarConnection: CalendarConnectionRow = {
   id: '990e8400-e29b-41d4-a716-446655440001',
@@ -199,6 +254,13 @@ export const VALID_TRANSCRIPT_SOURCES: TranscriptSource[] = [
   'zoom_recording',
   'live_bot',
   'manual_upload',
+  'google_meet_bot',
+];
+
+// ─── Valid Meeting Platforms ──────────────────────────
+export const VALID_MEETING_PLATFORMS: MeetingPlatform[] = [
+  'zoom',
+  'google_meet',
 ];
 
 // ─── Sample VTT Content ────────────────────────────────
@@ -224,30 +286,54 @@ Speaker 1: Mostly our Warehouse Managers. They update it daily, but sometimes th
 00:01:00.000 --> 00:01:07.000
 Speaker 2: I'd like to add that the approval process is completely manual right now.`;
 
-// ─── Sample Zoom URLs for Calendar Detection ───────────
+// ─── Sample Calendar Events for Meeting Detection ───────────
 export const SAMPLE_CALENDAR_EVENTS = [
   {
     summary: 'ERP Discovery Call with Acme Corp',
     description: 'Join Zoom Meeting: https://us04web.zoom.us/j/1234567890',
     location: '',
+    hangoutLink: '',
     expectedMeetingId: '1234567890',
+    expectedPlatform: 'zoom' as const,
   },
   {
     summary: 'Follow-up: Inventory Walkthrough',
     description: '',
     location: 'https://us02web.zoom.us/j/9876543210',
+    hangoutLink: '',
     expectedMeetingId: '9876543210',
+    expectedPlatform: 'zoom' as const,
   },
   {
     summary: 'Internal Standup (no Zoom)',
     description: 'Meet in conference room B',
     location: 'Office - Room B',
+    hangoutLink: '',
     expectedMeetingId: null,
+    expectedPlatform: null,
   },
   {
     summary: 'Client Sprint Review',
     description: 'Link: https://teams.microsoft.com/l/meetup-join/xxx',
     location: '',
+    hangoutLink: '',
     expectedMeetingId: null,
+    expectedPlatform: null,
+  },
+  {
+    summary: 'Acme Corp Design Sync',
+    description: 'Agenda: Review wireframes',
+    location: '',
+    hangoutLink: 'https://meet.google.com/abc-defg-hij',
+    expectedMeetingId: 'abc-defg-hij',
+    expectedPlatform: 'google_meet' as const,
+  },
+  {
+    summary: 'Weekly Planning with Engineering',
+    description: 'Join via Google Meet: https://meet.google.com/xyz-abcd-efg',
+    location: '',
+    hangoutLink: '',
+    expectedMeetingId: 'xyz-abcd-efg',
+    expectedPlatform: 'google_meet' as const,
   },
 ];
