@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useProjectContext } from "@/contexts/ProjectContext";
+import { getMeetingWithTranscript, getTranscriptById } from "@/services/meetings";
 import { PhaseStepper } from "@/components/PhaseStepper";
 import { TranscriptInput } from "@/components/TranscriptInput";
 import { Phase1Output } from "@/components/Phase1Output";
@@ -23,17 +24,19 @@ interface NewProjectProps {
 
 export default function NewProject({ mode }: NewProjectProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { createProject, updatePhase1, updatePhase2, updatePhase3, updatePhase4, getProject } = useProjectContext();
 
-  // Pre-populated transcript from Zoom meeting (via navigation state)
-  const prePopulatedTranscript = (location.state as { transcript?: string })?.transcript;
-  const prePopulatedMeetingId = (location.state as { meetingId?: string })?.meetingId;
+  // URL parameters for transcript pre-population
+  const meetingIdParam = searchParams.get('meeting_id');
+  const transcriptIdParam = searchParams.get('transcript_id');
 
   const [step, setStep] = useState<"setup" | "phases">(mode === 'resume' ? 'phases' : 'setup');
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
+  const [initialTranscript, setInitialTranscript] = useState<string | undefined>(undefined);
+  const [linkedMeetingId, setLinkedMeetingId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(id || null);
   const [creating, setCreating] = useState(false);
   const [loadingProject, setLoadingProject] = useState(mode === 'resume');
@@ -169,6 +172,45 @@ export default function NewProject({ mode }: NewProjectProps) {
       toast.success(`Resuming: ${project.name}`);
     }
   }, [mode, id, getProject, navigate, updatePhase3]);
+
+  // Load transcript from URL parameters (meeting_id or transcript_id)
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadTranscriptFromParams() {
+      if (mode === 'resume') return; // Don't load in resume mode
+
+      try {
+        if (meetingIdParam) {
+          const result = await getMeetingWithTranscript(meetingIdParam);
+          if (mounted && result?.transcript) {
+            setInitialTranscript(result.transcript.content);
+            setLinkedMeetingId(meetingIdParam);
+            // Suggest project name from meeting topic
+            setProjectName((prev) => prev || result.meeting.topic);
+            toast.success("Transcript loaded from meeting");
+          }
+        } else if (transcriptIdParam) {
+          const transcript = await getTranscriptById(transcriptIdParam);
+          if (mounted && transcript) {
+            setInitialTranscript(transcript.content);
+            toast.success("Transcript loaded");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load transcript from params:", error);
+        if (mounted) {
+          toast.error("Failed to load transcript");
+        }
+      }
+    }
+
+    loadTranscriptFromParams();
+
+    return () => {
+      mounted = false;
+    };
+  }, [meetingIdParam, transcriptIdParam, mode]);
 
   const handleCreateProject = async () => {
     if (!projectName.trim() || !clientName.trim()) return;
@@ -476,8 +518,7 @@ export default function NewProject({ mode }: NewProjectProps) {
           <TranscriptInput
             onAnalyze={handleAnalyzeTranscript}
             processing={processing}
-            initialTranscript={prePopulatedTranscript}
-            initialMeetingId={prePopulatedMeetingId}
+            initialTranscript={initialTranscript}
           />
         )}
 

@@ -2,34 +2,24 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderPlus,
-  Video,
-  Settings,
   Menu,
   X,
-  LogOut,
+  Mic,
 } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
-import { NotificationBell } from "./NotificationBell";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
+  { label: "Meetings", path: "/meetings", icon: Mic },
   { label: "New Project", path: "/project/new", icon: FolderPlus },
-  { label: "Meetings", path: "/meetings", icon: Video },
-  { label: "Settings", path: "/settings", icon: Settings },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { theme } = useTheme();
-  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const userInitial = user?.user_metadata?.full_name?.[0] ||
-    user?.email?.[0]?.toUpperCase() || "?";
-  const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -87,43 +77,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            <NotificationBell />
             <ThemeToggle />
-
-            {/* User Avatar + Sign Out */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/60 transition-colors">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="w-7 h-7 rounded-full"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                    {userInitial}
-                  </div>
-                )}
-              </button>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-3 border-b border-border">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {user?.user_metadata?.full_name || "User"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user?.email}
-                  </p>
-                </div>
-                <button
-                  onClick={signOut}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors rounded-b-xl"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -150,16 +104,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            <button
-              onClick={() => {
-                signOut();
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              Sign Out
-            </button>
           </nav>
         </div>
       )}

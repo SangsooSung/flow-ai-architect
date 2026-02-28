@@ -191,6 +191,14 @@ resource "aws_ecs_task_definition" "whisper_consumer" {
         {
           name      = "HF_TOKEN"
           valueFrom = "${aws_secretsmanager_secret.huggingface.arn}:token::"
+        },
+        {
+          name      = "SUPABASE_URL"
+          valueFrom = "${aws_secretsmanager_secret.supabase.arn}:url::"
+        },
+        {
+          name      = "SUPABASE_SERVICE_KEY"
+          valueFrom = "${aws_secretsmanager_secret.supabase.arn}:service_key::"
         }
       ]
 

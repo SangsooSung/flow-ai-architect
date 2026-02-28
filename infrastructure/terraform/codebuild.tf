@@ -171,9 +171,13 @@ resource "aws_codebuild_project" "bot_producer" {
                 server {
                   listen 1935;
                   chunk_size 4096;
+                  max_message 1M;
+                  buflen 5s;
                   application live {
                     live on;
                     record off;
+                    wait_video off;
+                    wait_key off;
                     allow publish all;
                     allow play 127.0.0.1;
                     deny play all;
@@ -233,6 +237,8 @@ resource "aws_codebuild_project" "bot_producer" {
             - |
               cat > start_chunker.sh << 'CHUNKER'
               #!/bin/bash
+              # Flow AI Bot Producer - Start Chunker Script
+              # Key fixes for reliable segmentation from RTMP streams
               SESSION_ID="$1"
               CHUNK_DURATION="$${CHUNK_DURATION_SECONDS:-30}"
               SAMPLE_RATE="$${AUDIO_SAMPLE_RATE:-16000}"
@@ -240,11 +246,14 @@ resource "aws_codebuild_project" "bot_producer" {
               mkdir -p "$CHUNK_DIR"
               echo "[$(date -Iseconds)] Starting chunker for session: $${SESSION_ID}" >> /tmp/chunker.log
               sleep 2
-              exec ffmpeg -hide_banner -loglevel warning \
+              # ffmpeg for RTMP audio extraction and segmentation
+              # Simplified: no timestamp manipulation, just decode and segment
+              exec ffmpeg -hide_banner -loglevel info \
                 -i "rtmp://127.0.0.1:1935/live/$${SESSION_ID}" \
-                -vn -acodec pcm_s16le -ar "$SAMPLE_RATE" -ac 1 \
+                -vn \
+                -acodec pcm_s16le -ar "$SAMPLE_RATE" -ac 1 \
                 -f segment -segment_time "$CHUNK_DURATION" -segment_format wav \
-                -reset_timestamps 1 "$${CHUNK_DIR}/chunk_%05d.wav" 2>> /tmp/chunker.log
+                "$${CHUNK_DIR}/chunk_%05d.wav" 2>&1 | tee /tmp/ffmpeg.log
               CHUNKER
             - mkdir -p app
             - |
@@ -307,16 +316,15 @@ resource "aws_codebuild_project" "bot_producer" {
             - |
               cat > app/chunker.py << 'CHUNKER_PY'
               import asyncio
+              import csv
               import json
               import os
               import re
               from datetime import datetime, timezone
               from pathlib import Path
-              from typing import Optional
+              from typing import Optional, Set
               import boto3
               import structlog
-              from watchdog.events import FileSystemEventHandler
-              from watchdog.observers import Observer
               log = structlog.get_logger()
               S3_BUCKET = os.getenv("S3_BUCKET")
               SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
@@ -324,45 +332,50 @@ resource "aws_codebuild_project" "bot_producer" {
               DYNAMODB_SESSION_TABLE = os.getenv("DYNAMODB_SESSION_TABLE")
               CHUNK_DURATION_SECONDS = int(os.getenv("CHUNK_DURATION_SECONDS", "30"))
               AWS_REGION = os.getenv("AWS_REGION", os.getenv("AWS_REGION_NAME", "us-east-1"))
+              AUDIO_SAMPLE_RATE = int(os.getenv("AUDIO_SAMPLE_RATE", "16000"))
+              EXPECTED_CHUNK_SIZE = AUDIO_SAMPLE_RATE * 2 * CHUNK_DURATION_SECONDS
               s3_client = boto3.client("s3", region_name=AWS_REGION)
               sqs_client = boto3.client("sqs", region_name=AWS_REGION)
               dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
-              class ChunkHandler(FileSystemEventHandler):
-                  def __init__(self, uploader):
-                      self.uploader = uploader
-                  def on_created(self, event):
-                      if not event.is_directory and event.src_path.endswith(".wav"):
-                          asyncio.run_coroutine_threadsafe(self.uploader.process_chunk(event.src_path), self.uploader.loop)
               class ChunkUploader:
                   def __init__(self, session_id: str):
                       self.session_id = session_id
                       self.chunk_dir = Path(f"/tmp/chunks/{session_id}")
+                      self.segment_list_path = self.chunk_dir / "segments.csv"
                       self.chunks_uploaded = 0
                       self.start_time = None
                       self.meeting_id = None
-                      self.observer = None
                       self.loop = None
                       self._running = False
                       self.ffmpeg_proc = None
+                      self._processed_chunks: Set[str] = set()
                   async def start(self):
                       import subprocess
+                      import threading
                       self.loop = asyncio.get_running_loop()
                       self._running = True
                       self.start_time = datetime.now(timezone.utc)
                       self.chunk_dir.mkdir(parents=True, exist_ok=True)
                       await self._load_session()
-                      self.observer = Observer()
-                      handler = ChunkHandler(self)
-                      self.observer.schedule(handler, str(self.chunk_dir), recursive=False)
-                      self.observer.start()
                       sample_rate = os.getenv("AUDIO_SAMPLE_RATE", "16000")
                       chunk_duration = os.getenv("CHUNK_DURATION_SECONDS", "30")
                       rtmp_url = f"rtmp://127.0.0.1:1935/live/{self.session_id}"
-                      ffmpeg_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "warning", "-i", rtmp_url, "-vn", "-acodec", "pcm_s16le", "-ar", sample_rate, "-ac", "1", "-f", "segment", "-segment_time", chunk_duration, "-segment_format", "wav", "-reset_timestamps", "1", f"{self.chunk_dir}/chunk_%05d.wav"]
+                      segment_list_path = f"{self.chunk_dir}/segments.csv"
+                      ffmpeg_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "warning", "-use_wallclock_as_timestamps", "1", "-i", rtmp_url, "-vn", "-acodec", "pcm_s16le", "-ar", sample_rate, "-ac", "1", "-f", "segment", "-segment_time", chunk_duration, "-segment_format", "wav", "-reset_timestamps", "1", "-segment_list", segment_list_path, "-segment_list_type", "csv", f"{self.chunk_dir}/chunk_%05d.wav"]
                       log.info("starting_ffmpeg", session_id=self.session_id, cmd=" ".join(ffmpeg_cmd))
-                      self.ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-                      log.info("chunk_uploader_started", session_id=self.session_id, meeting_id=self.meeting_id, ffmpeg_pid=self.ffmpeg_proc.pid)
-                      await self._process_existing_chunks()
+                      self.ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, bufsize=1, universal_newlines=True)
+                      def stderr_reader():
+                          try:
+                              for line in self.ffmpeg_proc.stderr:
+                                  line = line.strip()
+                                  if line:
+                                      log.info("ffmpeg_debug", line=line[:500])
+                          except Exception as e:
+                              log.warning("ffmpeg_stderr_read_error", error=str(e))
+                      self._stderr_thread = threading.Thread(target=stderr_reader, daemon=True)
+                      self._stderr_thread.start()
+                      log.info("chunk_uploader_started", session_id=self.session_id, meeting_id=self.meeting_id, ffmpeg_pid=self.ffmpeg_proc.pid, segment_list=str(self.segment_list_path))
+                      asyncio.create_task(self._watch_segment_list())
                   async def stop(self):
                       log.info("chunk_uploader_stopping", session_id=self.session_id)
                       self._running = False
@@ -372,14 +385,10 @@ resource "aws_codebuild_project" "bot_producer" {
                               self.ffmpeg_proc.wait(timeout=5)
                           except:
                               self.ffmpeg_proc.kill()
-                          stderr = self.ffmpeg_proc.stderr.read().decode() if self.ffmpeg_proc.stderr else ""
-                          if stderr:
-                              log.info("ffmpeg_stderr", session_id=self.session_id, stderr=stderr[:500])
-                      if self.observer:
-                          self.observer.stop()
-                          self.observer.join(timeout=5)
+                          if hasattr(self, '_stderr_thread') and self._stderr_thread.is_alive():
+                              self._stderr_thread.join(timeout=2)
                       await asyncio.sleep(2)
-                      await self._process_existing_chunks()
+                      await self._process_segment_list()
                       await self._update_session_complete()
                       log.info("chunk_uploader_stopped", session_id=self.session_id, total_chunks=self.chunks_uploaded)
                   async def _load_session(self):
@@ -390,54 +399,59 @@ resource "aws_codebuild_project" "bot_producer" {
                           self.meeting_id = item.get("meeting_id")
                       except Exception as e:
                           log.error("session_load_failed", session_id=self.session_id, error=str(e))
-                  async def _process_existing_chunks(self):
-                      if not self.chunk_dir.exists():
+                  async def _watch_segment_list(self):
+                      while self._running:
+                          await self._process_segment_list()
+                          await asyncio.sleep(1)
+                  async def _process_segment_list(self):
+                      if not self.segment_list_path.exists():
                           return
-                      chunks = sorted(self.chunk_dir.glob("chunk_*.wav"), key=lambda p: self._extract_chunk_index(p.name))
-                      for chunk_path in chunks:
-                          await self.process_chunk(str(chunk_path))
-                  async def process_chunk(self, chunk_path: str):
-                      path = Path(chunk_path)
-                      if not path.exists():
-                          return
-                      await self._wait_for_file_complete(path)
+                      try:
+                          with open(self.segment_list_path, 'r') as f:
+                              reader = csv.reader(f)
+                              for row in reader:
+                                  if len(row) < 3:
+                                      continue
+                                  filename, start_time, end_time = row[0], float(row[1]), float(row[2])
+                                  if filename in self._processed_chunks:
+                                      continue
+                                  chunk_path = self.chunk_dir / filename
+                                  if chunk_path.exists():
+                                      file_size = chunk_path.stat().st_size
+                                      duration = end_time - start_time
+                                      log.info("segment_complete", filename=filename, start_time=start_time, end_time=end_time, duration=duration, size_kb=file_size // 1024)
+                                      if file_size < 1024:
+                                          log.error("chunk_empty", filename=filename, size_bytes=file_size)
+                                          self._processed_chunks.add(filename)
+                                          chunk_path.unlink(missing_ok=True)
+                                          continue
+                                      await self._process_chunk(chunk_path, start_time, end_time)
+                                      self._processed_chunks.add(filename)
+                      except Exception as e:
+                          log.error("segment_list_read_failed", session_id=self.session_id, error=str(e))
+                  async def _process_chunk(self, path: Path, start_time: float, end_time: float):
+                      file_size = path.stat().st_size
                       chunk_index = self._extract_chunk_index(path.name)
+                      duration = end_time - start_time
                       s3_key = f"meetings/{self.meeting_id}/{self.session_id}/chunk_{chunk_index:05d}.wav"
                       try:
                           await asyncio.get_running_loop().run_in_executor(None, lambda: s3_client.upload_file(str(path), S3_BUCKET, s3_key, ExtraArgs={"ContentType": "audio/wav"}))
-                          start_time_seconds = chunk_index * CHUNK_DURATION_SECONDS
-                          message = {"meeting_id": self.meeting_id, "session_id": self.session_id, "chunk_index": chunk_index, "s3_bucket": S3_BUCKET, "s3_key": s3_key, "start_time_seconds": start_time_seconds, "duration_seconds": CHUNK_DURATION_SECONDS, "timestamp": datetime.now(timezone.utc).isoformat()}
+                          meeting_language = os.getenv("MEETING_LANGUAGE", "en")
+                          message = {"meeting_id": self.meeting_id, "session_id": self.session_id, "chunk_index": chunk_index, "s3_bucket": S3_BUCKET, "s3_key": s3_key, "start_time_seconds": start_time, "duration_seconds": duration, "language": meeting_language, "timestamp": datetime.now(timezone.utc).isoformat()}
                           await asyncio.get_running_loop().run_in_executor(None, lambda: sqs_client.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(message)))
-                          await self._update_chunk_state(chunk_index, s3_key)
+                          await self._update_chunk_state(chunk_index, s3_key, duration)
                           path.unlink(missing_ok=True)
                           self.chunks_uploaded += 1
-                          log.info("chunk_processed", session_id=self.session_id, meeting_id=self.meeting_id, chunk_index=chunk_index)
+                          log.info("chunk_processed", session_id=self.session_id, meeting_id=self.meeting_id, chunk_index=chunk_index, size_kb=file_size // 1024, duration=duration)
                       except Exception as e:
                           log.error("chunk_processing_failed", session_id=self.session_id, chunk_index=chunk_index, error=str(e))
-                  async def _wait_for_file_complete(self, path, timeout=35.0):
-                      prev_size = -1
-                      stable_count = 0
-                      min_size = 100000
-                      for _ in range(int(timeout * 10)):
-                          if not path.exists():
-                              return
-                          current_size = path.stat().st_size
-                          if current_size == prev_size and current_size >= min_size:
-                              stable_count += 1
-                              if stable_count >= 3:
-                                  log.info("file_ready", path=str(path), size=current_size)
-                                  return
-                          else:
-                              stable_count = 0
-                              prev_size = current_size
-                          await asyncio.sleep(0.1)
                   def _extract_chunk_index(self, filename):
                       match = re.search(r"chunk_(\d+)\.wav", filename)
                       return int(match.group(1)) if match else 0
-                  async def _update_chunk_state(self, chunk_index, s3_key):
+                  async def _update_chunk_state(self, chunk_index, s3_key, duration):
                       try:
                           table = dynamodb.Table(DYNAMODB_CHUNK_TABLE)
-                          await asyncio.get_running_loop().run_in_executor(None, lambda: table.put_item(Item={"meeting_id": self.meeting_id, "chunk_index": chunk_index, "session_id": self.session_id, "s3_key": s3_key, "status": "uploaded", "uploaded_at": datetime.now(timezone.utc).isoformat(), "ttl": int(datetime.now(timezone.utc).timestamp()) + 86400 * 7}))
+                          await asyncio.get_running_loop().run_in_executor(None, lambda: table.put_item(Item={"meeting_id": self.meeting_id, "chunk_index": chunk_index, "session_id": self.session_id, "s3_key": s3_key, "status": "uploaded", "duration_seconds": str(duration), "uploaded_at": datetime.now(timezone.utc).isoformat(), "ttl": int(datetime.now(timezone.utc).timestamp()) + 86400 * 7}))
                       except Exception as e:
                           log.error("chunk_state_update_failed", session_id=self.session_id, chunk_index=chunk_index, error=str(e))
                   async def _update_session_complete(self):
@@ -612,11 +626,19 @@ resource "aws_codebuild_project" "whisper_consumer" {
                   log.info("whisper_consumer_starting", model=WHISPER_MODEL, device=DEVICE, compute_type=COMPUTE_TYPE)
                   asr_processor = ASRProcessor(model_name=WHISPER_MODEL, device=DEVICE, compute_type=COMPUTE_TYPE)
                   diarization_processor = None
+                  log.info("diarization_config", enabled=DIARIZATION_ENABLED)
                   if DIARIZATION_ENABLED:
                       hf_token = os.environ.get("HF_TOKEN")
                       if hf_token:
-                          diarization_processor = DiarizationProcessor(hf_token=hf_token)
-                  log.info("processors_initialized")
+                          log.info("initializing_diarization", token_present=True)
+                          try:
+                              diarization_processor = DiarizationProcessor(hf_token=hf_token)
+                              log.info("diarization_processor_ready")
+                          except Exception as e:
+                              log.error("diarization_init_failed", error=str(e))
+                      else:
+                          log.warning("diarization_skipped", reason="HF_TOKEN not set")
+                  log.info("processors_initialized", diarization_enabled=diarization_processor is not None)
                   while not shutdown_requested:
                       try:
                           process_messages(asr_processor, diarization_processor)
@@ -654,10 +676,16 @@ resource "aws_codebuild_project" "whisper_consumer" {
                       audio_path = tmp_file.name
                   try:
                       s3.download_file(S3_BUCKET, s3_key, audio_path)
-                      asr_result = asr_processor.transcribe(audio_path)
+                      message_language = message.get("language", "")
+                      chunk_language = message_language if message_language else None
+                      asr_result = asr_processor.transcribe(audio_path, language=chunk_language)
+                      log.info("asr_complete", chunk_index=chunk_index, segments=len(asr_result.segments), detected_language=asr_result.language, language_probability=round(asr_result.language_probability, 3), requested_language=message_language or "auto")
                       diarization_result = None
                       if diarization_processor:
+                          log.info("running_diarization", chunk_index=chunk_index)
                           diarization_result = diarization_processor.diarize(audio_path)
+                          speakers = set(seg.speaker for seg in diarization_result.segments) if diarization_result and diarization_result.segments else set()
+                          log.info("diarization_complete", chunk_index=chunk_index, speaker_count=len(speakers), speakers=list(speakers))
                       segments = merge_asr_diarization(asr_result, diarization_result, start_time_seconds)
                       if segments:
                           write_segments_to_dynamodb(meeting_id, session_id, chunk_index, segments)
@@ -667,7 +695,9 @@ resource "aws_codebuild_project" "whisper_consumer" {
                           s3.delete_object(Bucket=S3_BUCKET, Key=s3_key)
                       except Exception as e:
                           log.warning("s3_delete_failed", error=str(e))
-                      log.info("chunk_processed", meeting_id=meeting_id, chunk_index=chunk_index, segment_count=len(segments))
+                      word_count = sum(len(seg["text"].split()) for seg in segments)
+                      audio_duration = max((seg["end_time"] for seg in segments), default=0) if segments else 0
+                      log.info("chunk_processed", meeting_id=meeting_id, chunk_index=chunk_index, segment_count=len(segments), word_count=word_count, audio_duration_seconds=round(audio_duration - start_time_seconds, 1), requested_language=message_language or "auto", detected_language=asr_result.language)
                   finally:
                       Path(audio_path).unlink(missing_ok=True)
               def merge_asr_diarization(asr_result, diarization_result, time_offset):
